@@ -1,0 +1,26 @@
+{
+  "name": "archsaif-motion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ArchSaif Studio \u2014 Arabic kinetic typography motion film (Remotion)",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render ArchSaifFilm out/archsaif-film.mp4",
+    "still": "remotion still ArchSaifFilm",
+    "typecheck": "tsc --noEmit",
+    "audio": "python3 -I scripts/make_audio.py",
+    "logo": "python3 -I scripts/extract_logo.py"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.535",
+    "@remotion/fonts": "4.0.535",
+    "@remotion/layout-utils": "4.0.535",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.535"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.8",
+    "typescript": "5.8.3"
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+out/
+.DS_Store
+# Thmanyah font files are licensed for local use only and must not be
+# redistributed or uploaded (see README). Place them here locally.
+public/fonts/*
+!public/fonts/README.md
