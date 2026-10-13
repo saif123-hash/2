@@ -1,9 +1,10 @@
 import React from 'react';
 import {AbsoluteFill, Html5Audio, Sequence, staticFile} from 'remotion';
 import {AUDIO} from './config/audio';
+import {COLORS} from './config/theme';
 import {SCENE_DURATIONS, SCENE_ORDER, SCENE_START, SceneId} from './config/timeline';
-import {Background} from './components/Background';
-import {Chrome} from './components/Chrome';
+import {Chrome} from './overlay/Chrome';
+import {Finish} from './overlay/Overlays';
 import {S1Hook} from './scenes/S1Hook';
 import {S2Reference} from './scenes/S2Reference';
 import {S3Camera} from './scenes/S3Camera';
@@ -21,8 +22,7 @@ const SCENES: Record<SceneId, React.FC> = {
 };
 
 export const Film: React.FC = () => (
-  <AbsoluteFill style={{background: '#F5F6F8'}}>
-    <Background />
+  <AbsoluteFill style={{background: COLORS.bg}}>
     {SCENE_ORDER.map((id) => {
       const Scene = SCENES[id];
       return (
@@ -31,6 +31,7 @@ export const Film: React.FC = () => (
         </Sequence>
       );
     })}
+    <Finish />
     <Chrome />
     {AUDIO.enabled ? <Html5Audio src={staticFile('audio/music.wav')} volume={AUDIO.musicVolume} /> : null}
   </AbsoluteFill>

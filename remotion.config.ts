@@ -6,7 +6,9 @@ Config.setCodec('h264');
 Config.setCrf(16);
 Config.setPixelFormat('yuv420p');
 Config.setOverwriteOutput(true);
-// Use the locally installed headless shell when present (cloud containers
+// WebGL in headless Chrome without a GPU: SwiftShader via ANGLE.
+Config.setChromiumOpenGlRenderer('swangle');
+// Use a locally installed headless shell when present (cloud containers
 // without access to Remotion's browser download).
 if (process.env.REMOTION_BROWSER) {
   Config.setBrowserExecutable(process.env.REMOTION_BROWSER);

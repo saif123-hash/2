@@ -1,64 +1,64 @@
-# ArchSaif Studio: motion film (Remotion)
+# ArchSaif Studio: 3D motion film (Remotion + Three.js)
 
-A 39-second vertical (1080×1920, 30fps) motion-graphics ad built entirely with
-Arabic kinetic typography and vector geometry. It uses no photos, renders or footage.
+A ~31-second vertical (1080×1920, 30fps) motion ad. It uses real-time 3D
+geometry with extruded Arabic kinetic typography and no photos, renders or footage.
 
-- Final export: `renders/archsaif-film.mp4` (H.264 + AAC, 1177 frames)
+- Final export: `renders/archsaif-film.mp4` (H.264 + AAC)
 - Contact sheet: `renders/contact-sheet.png`
+
+## What's in it
+
+- **3D stage per scene** (`src/three/Stage.tsx`). It has an orbit camera, soft key and rim
+  lighting with shadows, a fogged floor that melts into the brand paper colour, and
+  a camera-locked HUD layer for headlines.
+- **Extruded Arabic headlines** (`src/three/Text3D.tsx`). Chrome shapes each word
+  (correct joining and RTL), and the word is then stacked into a solid 3D extrusion. Words
+  flip, swing, slam, spin and fly through the lens, and a pale-blue 3D slab draws in
+  behind the key line.
+- **Extruded 5 / 6 digits** built from the real Thmanyah Black outlines
+  (`src/three/Digit3D.tsx`).
+- **Slab massing** with openings, materials and morphing parameters
+  (`src/three/Massing3D.tsx`), plus debris bursts, envelopes, beams and checks.
+- The tempo is 112.5 BPM, so 1 beat = 16 frames and every cut lands on a beat.
 
 ## Run
 
 ```bash
 npm install
-# fonts: copy the Thmanyah Sans .woff2 files into public/fonts/ (see below)
-npm run studio            # live, scrubbable preview
+# fonts: put the Thmanyah files in public/fonts/ (see public/fonts/README.md)
+npm run studio            # live preview
 npm run render            # → out/archsaif-film.mp4
 ```
 
-In a container without Remotion's own Chrome download, point it at a local
-headless shell: `REMOTION_BROWSER=/path/to/headless_shell npm run render`.
+WebGL is rendered with SwiftShader (`swangle`), so no GPU is needed. In a
+container without Remotion's Chrome download, set
+`REMOTION_BROWSER=/path/to/headless_shell`.
 
 ### Fonts (not committed)
 The Thmanyah font license forbids redistributing the font files, so
-`public/fonts/` is git-ignored. Place `thmanyahsans-{Light,Regular,Medium,Bold,Black}.woff2`
-there (from https://thmanyah.com). Rendering waits for them to load.
+`public/fonts/` is git-ignored.
 
 ## Where to edit
 
 | What | File |
 |---|---|
 | All on-screen copy (Arabic + brand lock) | `src/config/copy.ts` |
-| Colours, font, margins | `src/config/theme.ts` |
-| Scene lengths and hand-off geometry between scenes | `src/config/timeline.ts` |
-| Music / SFX volume, audio on/off | `src/config/audio.ts` |
-| Per-scene choreography (keyframes are named constants at the top of each file) | `src/scenes/S1Hook.tsx` … `S6Brand.tsx` |
+| Colours, font | `src/config/theme.ts` |
+| Scene lengths (beat-locked) | `src/config/timeline.ts` |
+| Music / SFX volume | `src/config/audio.ts` |
+| Per-scene choreography: camera shots, cues, layout constants at the top of each file | `src/scenes/S1Hook.tsx` … `S6Brand.tsx` |
 
-Reusable components:
-
-- `components/ArLine.tsx`: the kinetic Arabic line. Words animate as whole,
-  shaped units in reading order (rise / drop / scale / turn / slide / wipe),
-  with an auto-fit width and a drawn highlight.
-- `components/Primitives.tsx`: `Camera` (virtual 2D camera), `Band` (the
-  travelling blue thread used for every hand-off), `Tag`, `Sfx`, `Svg`.
-- `components/Massing.tsx`: the abstract "approved composition". Its
-  parameters are continuous, so wrong variants morph into the approved one.
-- `components/Marks.tsx`: hatch, check, cross and viewfinder brackets.
-- `lib/motion.ts`: easing vocabulary, `track()` multi-keyframe helper, shake.
-- `lib/project.ts`: 3D→2D projection for the perspective grid (Scene 03).
-
-Every transition is a geometric match-cut. The outgoing scene ends on exactly
-the shape the next scene starts from:
-highlight → reference line → grid → directional lines → review track →
-review indicator → final highlight → logo divider.
+Camera moves are written as `shotTrack` keyframes (target, distance, yaw,
+pitch, roll, fov), so arcs and orbits interpolate cleanly.
 
 ## Audio
-`npm run audio` regenerates `public/audio/*.wav`. The music bed and all sound
-effects are synthesised from oscillators and noise in `scripts/make_audio.py`,
-with no samples or third-party audio, so they are original and free to use. The
-score reads the scene boundaries from `timeline.ts`, so it stays in sync after
-re-timing.
+`npm run audio` regenerates `public/audio/*.wav`. The music and sound effects are
+synthesised from oscillators and noise in `scripts/make_audio.py`, with no samples,
+so they are original and free to use. The score reads the scene boundaries from
+`timeline.ts`. It has risers into every cut, a drop on the sixth slab, a breakdown
+while the review gate stops on the error, and a resolve chord under the logo.
 
 ## Logo
-`public/brand/archsaif-logo.png` is the supplied logo with only its flat grey
+`public/brand/archsaif-logo.png` is the supplied logo with only its flat
 backdrop keyed to transparency (`scripts/extract_logo.py`). The artwork itself is
 unmodified.

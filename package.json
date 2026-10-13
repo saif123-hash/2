@@ -2,7 +2,7 @@
   "name": "archsaif-motion",
   "version": "1.0.0",
   "private": true,
-  "description": "ArchSaif Studio \u2014 Arabic kinetic typography motion film (Remotion)",
+  "description": "ArchSaif Studio — Arabic kinetic typography motion film (Remotion)",
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render ArchSaifFilm out/archsaif-film.mp4",
@@ -12,15 +12,23 @@
     "logo": "python3 -I scripts/extract_logo.py"
   },
   "dependencies": {
+    "@react-three/drei": "10.7.6",
+    "@react-three/fiber": "9.3.0",
     "@remotion/cli": "4.0.535",
     "@remotion/fonts": "4.0.535",
     "@remotion/layout-utils": "4.0.535",
+    "@remotion/motion-blur": "4.0.535",
+    "@remotion/three": "4.0.535",
+    "opentype.js": "1.3.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "remotion": "4.0.535"
+    "remotion": "4.0.535",
+    "three": "0.180.0"
   },
   "devDependencies": {
+    "@types/opentype.js": "1.3.8",
     "@types/react": "19.1.8",
+    "@types/three": "0.180.0",
     "typescript": "5.8.3"
   }
 }

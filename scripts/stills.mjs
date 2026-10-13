@@ -9,7 +9,7 @@ const [outDir, ...frames] = process.argv.slice(2);
 fs.mkdirSync(outDir, {recursive: true});
 const serveUrl = await bundle({entryPoint: path.resolve('src/index.ts')});
 const browserExecutable = process.env.REMOTION_BROWSER ?? null;
-const composition = await selectComposition({serveUrl, id: 'ArchSaifFilm', browserExecutable});
+const composition = await selectComposition({serveUrl, id: 'ArchSaifFilm', browserExecutable, chromiumOptions: {gl: 'swangle'}});
 for (const fr of frames.map(Number)) {
   await renderStill({
     serveUrl,
@@ -18,6 +18,7 @@ for (const fr of frames.map(Number)) {
     output: path.join(outDir, `f${String(fr).padStart(4, '0')}.png`),
     browserExecutable,
     scale: 0.5,
+    chromiumOptions: {gl: 'swangle'},
   });
   process.stdout.write(`${fr} `);
 }

@@ -1,284 +1,161 @@
 import React from 'react';
+import {Line} from '@react-three/drei';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {ArLine} from '../components/ArLine';
-import {Brackets} from '../components/Marks';
-import {Sfx, Svg, Tag} from '../components/Primitives';
+import * as THREE from 'three';
 import {COPY} from '../config/copy';
-import {COLORS, FONT_FAMILY, TEXT_RIGHT} from '../config/theme';
-import {HANDOFF} from '../config/timeline';
-import {Cam, pathOf, project} from '../lib/project';
-import {EASE, Key, lerp, prog, shake, track} from '../lib/motion';
-import {GRID} from './S2Reference';
-import {S4_BAR_CENTERS} from './S4Enhance';
+import {COLORS, TEXT_RIGHT} from '../config/theme';
+import {EASE, clamp01, prog} from '../lib/motion';
+import {Sfx, Streaks} from '../overlay/Overlays';
+import {toScreen} from '../three/Helpers';
+import {HudBrackets, HudRect} from '../three/Hud';
+import {Stage} from '../three/Stage';
+import {Line3D} from '../three/Text3D';
+import {Shot, shotTrack} from '../three/shot';
 
 // ── Scene 03 · Camera vs. design ──────────────────────────────────────
-// A true perspective plane orbits through three viewpoints. The anchored
-// markers (windows, balconies, entrance) and the relations between them
-// never move on the plane — only the viewpoint does.
+// Top-down on the grid, the anchored elements pop up. The camera then
+// swings hard through three viewpoints; every element, and every relation
+// between them, stays exactly where it is. Ends in a whip pan.
 
-const L1 = {y: 214, size: 100};
-const L2 = {y: 350, size: 132};
-const LINE2_AT = 66;
-const OUT = 130;
-const LINES_AT = 140;
-const END = 172;
-const LINE_ANGLE = -16;
+const C: [number, number, number] = [0, 0, -1.5];
+const at = (x: number, y: number, z: number): [number, number, number] => [C[0] + x, C[1] + y, C[2] + z];
+const WINDOWS = [at(-1.7, 0.36, -1.7), at(-0.7, 0.36, -1.7), at(-1.7, 0.36, -0.7), at(-0.7, 0.36, -0.7)];
+const BALCONIES = [at(1.5, 0.16, -1.8), at(1.5, 0.16, -0.5)];
+const ENTRANCE = at(0, 0.95, 1.8);
+const LINE2_AT = 50;
+const OUT = 104;
+const WHIP = 108;
+const END = 128;
+const L1 = {y: 300, size: 100};
+const L2 = {y: 450, size: 132};
 
-const WINDOWS: [number, number][] = [
-  [-180, -240],
-  [180, -240],
-  [-180, -120],
-  [180, -120],
-];
-const BALCONIES: [number, number, number][] = [
-  // x0, x1, y
-  [-300, -60, 60],
-  [60, 300, 60],
-];
-const ENTRANCE: [number, number] = [0, 270];
+const BASE: Shot = {tx: 0, ty: 0, tz: -1.5, dist: 19, yaw: 0, pitch: 89.5, roll: 0, fov: 30};
 
 export const S3Camera: React.FC = () => {
   const f = useCurrentFrame();
+  const shot = shotTrack(f, BASE, [
+    [0, {}],
+    [8, {}],
+    [32, {tx: 0.15, ty: 1.9, tz: -2.0, dist: 14.8, yaw: -56, pitch: 21, roll: -7}, EASE.inOut],
+    [48, {yaw: -62, dist: 13.5}, EASE.smooth],
+    [72, {yaw: 52, pitch: 16, roll: 6, dist: 13.5}, EASE.inOut],
+    [86, {yaw: 58}, EASE.smooth],
+    [WHIP, {yaw: 12, pitch: 32, roll: 0, dist: 15}, EASE.inOut],
+    [END, {yaw: 200, roll: 28, dist: 12, pitch: 20}, EASE.in],
+  ]);
 
-  const yawK: Key[] = [
-    [12, 0],
-    [42, -36],
-    [58, -36],
-    [86, 30],
-    [98, 30],
-    [120, 0],
-  ];
-  const pitchK: Key[] = [
-    [12, 0],
-    [42, 16],
-    [58, 16],
-    [86, -12],
-    [98, -12],
-    [120, 0],
-  ];
-  const rollK: Key[] = [
-    [12, 0],
-    [42, -4],
-    [58, -4],
-    [86, 3],
-    [98, 3],
-    [120, 0],
-  ];
-  const zoomK: Key[] = [
-    [12, 1],
-    [42, 0.92],
-    [86, 0.95],
-    [120, 1],
-  ];
-  const cam: Cam = {
-    yaw: track(f, yawK),
-    pitch: track(f, pitchK),
-    roll: track(f, rollK),
-    dist: 1500,
-    zoom: track(f, zoomK),
-    cx: 540 + shake(f, LINE2_AT + 8, 6, 10),
-    cy: HANDOFF.gridCenterY + shake(f + 2, LINE2_AT + 8, 8, 10),
+  const pop = (d: number) => prog(f, 6 + d, 12, EASE.overshoot);
+  const whip = prog(f, WHIP, END - WHIP, EASE.in);
+  const hide = 1 - prog(f, OUT, 10, EASE.in);
+  const relP = prog(f, 20, 14, EASE.inOut);
+
+  // pins for the HUD labels follow the 3D elements through every move
+  const pin = (p: [number, number, number], dy: number) => {
+    const [x, y] = toScreen(shot, [p[0], p[1] + dy, p[2]]);
+    return [x, y] as [number, number];
   };
-  const P = (x: number, y: number) => {
-    const [sx, sy] = project(x, y, 0, cam);
-    return [sx, sy] as [number, number];
-  };
+  const wPin = pin(at(-1.2, 0.72, -1.2), 0.3);
+  const bPin = pin(BALCONIES[0], 0.4);
+  const ePin = pin(ENTRANCE, 0.85);
+  const lab = (a: number) => prog(f, a, 10) * hide;
 
-  const {cell, halfX, halfY} = GRID;
-  const markOp = 1 - prog(f, OUT - 6, 12, EASE.in);
-
-  // vertical grid lines retract at the end; horizontal ones become directional lines
-  const vRetract = prog(f, LINES_AT - 4, 14, EASE.in);
-  const L = prog(f, LINES_AT, END - LINES_AT, EASE.inOut);
-
-  const vLines: React.ReactNode[] = [];
-  for (let x = -halfX; x <= halfX; x += cell) {
-    const h = halfY * (1 - vRetract);
-    if (h <= 0) continue;
-    vLines.push(<path key={`v${x}`} d={pathOf([P(x, -h), P(x, h)])} />);
-  }
-
-  // horizontal lines: indices 1..5 map onto Scene 04's five bars, the rest leave
-  const hLines: React.ReactNode[] = [];
-  const ys: number[] = [];
-  for (let y = -halfY; y <= halfY; y += cell) ys.push(y);
-  ys.forEach((y, k) => {
-    const target = k >= 1 && k <= 5 ? S4_BAR_CENTERS[k - 1] : null;
-    if (L <= 0) {
-      hLines.push(<path key={`h${y}`} d={pathOf([P(-halfX, y), P(halfX, y)])} />);
-      return;
-    }
-    const [ax, ay] = P(-halfX, y);
-    const [bx, by] = P(halfX, y);
-    const cx0 = (ax + bx) / 2;
-    const cy0 = (ay + by) / 2;
-    const len = lerp(Math.hypot(bx - ax, by - ay), 1800, L);
-    const ang = (lerp(0, LINE_ANGLE, L) * Math.PI) / 180;
-    const cy1 = target ?? cy0 + (k === 0 ? -900 : 900);
-    const cx = lerp(cx0, 540, L);
-    const cy = lerp(cy0, cy1, L);
-    const dx = (Math.cos(ang) * len) / 2;
-    const dy = (Math.sin(ang) * len) / 2;
-    hLines.push(
-      <line
-        key={`h${y}`}
-        x1={cx - dx}
-        y1={cy - dy}
-        x2={cx + dx}
-        y2={cy + dy}
-        strokeWidth={lerp(2.5, 6, L)}
-        opacity={target === null ? 1 - L : 1}
-      />,
-    );
-  });
-
-  // projected bounding box of the plane → viewfinder brackets
-  const corners = [P(-halfX, -halfY), P(halfX, -halfY), P(halfX, halfY), P(-halfX, halfY)];
-  const bx0 = Math.min(...corners.map((c) => c[0])) - 34;
-  const bx1 = Math.max(...corners.map((c) => c[0])) + 34;
-  const by0 = Math.min(...corners.map((c) => c[1])) - 34;
-  const by1 = Math.max(...corners.map((c) => c[1])) + 34;
-  const brP = prog(f, 10, 14, EASE.out) * markOp;
-
-  const square = (cx: number, cy: number, s: number) =>
-    pathOf([P(cx - s / 2, cy - s / 2), P(cx + s / 2, cy - s / 2), P(cx + s / 2, cy + s / 2), P(cx - s / 2, cy + s / 2)], true);
-  const rect = (x0: number, x1: number, cy: number, h: number) =>
-    pathOf([P(x0, cy - h / 2), P(x1, cy - h / 2), P(x1, cy + h / 2), P(x0, cy + h / 2)], true);
-  const diamond = (cx: number, cy: number, s: number) => pathOf([P(cx, cy - s), P(cx + s, cy), P(cx, cy + s), P(cx - s, cy)], true);
-  const ring = (cx: number, cy: number, r: number) =>
-    pathOf(
-      Array.from({length: 33}, (_, i) => {
-        const a = (i / 32) * Math.PI * 2;
-        return P(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      }),
-      true,
-    );
-
-  const wP = prog(f, 16, 12, EASE.out);
-  const bP = prog(f, 26, 12, EASE.out);
-  const eP = prog(f, 36, 12, EASE.out);
-  const relP = prog(f, 44, 16, EASE.inOut);
-
-  // label anchors follow the markers through every viewpoint
-  const wA = P(180, -240 - 36);
-  const bA = P(300, 60);
-  const eA = P(0, 270 + 60);
-  const tagP = (at: number) => prog(f, at, 12, EASE.out) * markOp;
-
-  // angle readout
-  const yaw = cam.yaw;
-  const dialP = prog(f, 14, 12) * markOp;
-  const dial = {x: 540, y: 1610, r: 74};
-  const needle = ((-90 + yaw * 2) * Math.PI) / 180;
+  const angle = Math.round(((shot.yaw + 540) % 360) - 180);
 
   return (
     <AbsoluteFill>
-      <Svg>
-        <g stroke={COLORS.ink} strokeWidth={2.5} fill="none" opacity={1}>
-          {vLines}
-          {hLines}
-        </g>
+      <Stage
+        shot={shot}
+        lightCenter={C}
+        grid={0.22}
+        hud={
+          <>
+            <Line3D text={COPY.s3.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={4} stagger={4} mode="spin" outAt={OUT} outMode="flyOut" />
+            <Line3D
+              text={COPY.s3.line2}
+              x={TEXT_RIGHT}
+              y={L2.y}
+              size={L2.size}
+              inAt={LINE2_AT}
+              inDur={14}
+              stagger={3}
+              mode="slam"
+              hl={{at: LINE2_AT + 10, dur: 10, outAt: OUT + 2, outDur: 8}}
+              outAt={OUT + 2}
+              outMode="flyOut"
+            />
+            {[
+              [COPY.s3.labels[0], wPin, 22],
+              [COPY.s3.labels[1], bPin, 28],
+              [COPY.s3.labels[2], ePin, 34],
+            ].map(([t, p, a], i) => {
+              const pp = p as [number, number];
+              const v = lab(a as number);
+              if (v <= 0) return null;
+              return (
+                <group key={i}>
+                  <HudRect x={pp[0] - 2.5} y={pp[1] - 56 * v} w={5} h={56 * v} />
+                  <Line3D text={t as string} x={pp[0]} y={pp[1] - 92} align="center" size={46} weight={700} depth={10} inAt={(a as number) + 2} inDur={10} mode="flip" hl={{at: (a as number) + 4, dur: 8, depth: 8, outAt: OUT - 4, outDur: 8}} outAt={OUT - 4} outMode="flipOut" />
+                </group>
+              );
+            })}
+            <HudBrackets x={110} y={600} w={860} h={900} opacity={prog(f, 10, 10) * hide} />
+            {f > 12 && f < OUT ? (
+              <Line3D text={`${angle > 0 ? '+' : ''}${angle}°`} x={540} y={1560} align="center" size={44} weight={700} depth={8} inAt={0} mode="none" dir="ltr" />
+            ) : null}
+          </>
+        }
+      >
+        {/* relations on the floor: fixed in the world */}
+        {relP > 0 ? (
+          <group position={[0, 0.02, 0]}>
+            <Line points={[at(-1.2, 0, -1.2), at(1.5, 0, -1.15)]} color={COLORS.ink} lineWidth={3} dashed dashSize={0.25} gapSize={0.18} transparent opacity={relP * hide} />
+            <Line points={[at(-1.2, 0, -1.2), at(0, 0, 1.8)]} color={COLORS.ink} lineWidth={3} dashed dashSize={0.25} gapSize={0.18} transparent opacity={relP * hide} />
+            <Line points={[at(1.5, 0, -1.15), at(0, 0, 1.8)]} color={COLORS.ink} lineWidth={3} dashed dashSize={0.25} gapSize={0.18} transparent opacity={relP * hide} />
+          </group>
+        ) : null}
 
-        <g opacity={markOp}>
-          {/* relations between anchored elements (fixed on the plane) */}
-          {relP > 0 ? (
-            <g stroke={COLORS.ink} strokeWidth={2.5} strokeDasharray="6 7" fill="none" opacity={0.75}>
-              <path d={pathOf([P(-180, -120), P(-180, 60)])} strokeDasharray={`${relP * 300} 999`} />
-              <path d={pathOf([P(180, -120), P(180, 60)])} />
-              <path d={pathOf([P(-180, 60), P(0, 270), P(180, 60)])} />
-            </g>
-          ) : null}
-          {/* windows */}
-          {WINDOWS.map(([x, y], i) => {
-            const t = Math.min(1, Math.max(0, wP * 1.6 - i * 0.2));
-            return t > 0 ? <path key={i} d={square(x, y, 76 * t)} fill={COLORS.highlight} stroke={COLORS.ink} strokeWidth={3.5} /> : null;
-          })}
-          {/* balconies */}
-          {BALCONIES.map(([x0, x1, y], i) => {
-            const t = Math.min(1, Math.max(0, bP * 1.5 - i * 0.3));
-            return t > 0 ? <path key={i} d={rect(x0, lerp(x0, x1, t), y, 34)} fill={COLORS.ink} /> : null;
-          })}
-          {/* entrance */}
-          {eP > 0 ? (
-            <g>
-              <path d={ring(ENTRANCE[0], ENTRANCE[1], 64 * eP)} fill="none" stroke={COLORS.ink} strokeWidth={3} />
-              <path d={diamond(ENTRANCE[0], ENTRANCE[1], 34 * eP)} fill={COLORS.ink} />
-            </g>
-          ) : null}
+        {WINDOWS.map((p, i) => {
+          const s = pop(i * 2) * hide;
+          return s > 0.001 ? (
+            <mesh key={i} position={[p[0], p[1] * s, p[2]]} scale={s} castShadow>
+              <boxGeometry args={[0.72, 0.72, 0.72]} />
+              <meshStandardMaterial color={COLORS.highlight} emissive={COLORS.highlight} emissiveIntensity={0.35} roughness={0.35} />
+            </mesh>
+          ) : null;
+        })}
+        {BALCONIES.map((p, i) => {
+          const s = pop(8 + i * 2) * hide;
+          return s > 0.001 ? (
+            <mesh key={i} position={p} scale={[s, s, s]} castShadow>
+              <boxGeometry args={[2.4, 0.32, 0.62]} />
+              <meshStandardMaterial color={COLORS.ink} roughness={0.4} />
+            </mesh>
+          ) : null;
+        })}
+        {pop(14) * hide > 0.001 ? (
+          <group position={ENTRANCE} scale={pop(14) * hide}>
+            <mesh rotation={[0, THREE.MathUtils.degToRad(f * 3), 0]} castShadow>
+              <octahedronGeometry args={[0.6, 0]} />
+              <meshStandardMaterial color={COLORS.ink} roughness={0.3} flatShading />
+            </mesh>
+            <mesh position={[0, -0.93, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.95, 0.07, 12, 64]} />
+              <meshStandardMaterial color={COLORS.highlight} emissive={COLORS.highlight} emissiveIntensity={0.4} />
+            </mesh>
+          </group>
+        ) : null}
+      </Stage>
 
-          {/* leader lines to the screen-space labels */}
-          <g stroke={COLORS.ink} strokeWidth={2.5}>
-            {tagP(30) > 0 ? <line x1={wA[0]} y1={wA[1]} x2={wA[0] + 30} y2={wA[1] - 46 * tagP(30)} /> : null}
-            {tagP(40) > 0 ? <line x1={bA[0]} y1={bA[1]} x2={bA[0] + 28} y2={bA[1] + 52 * tagP(40)} /> : null}
-            {tagP(50) > 0 ? <line x1={eA[0]} y1={eA[1] - 24} x2={eA[0]} y2={eA[1] + 30 * tagP(50)} /> : null}
-          </g>
+      <Streaks p={whip} angle={-8 + whip * 20} count={26} opacity={clamp01(whip * 3)} />
 
-          <Brackets x={bx0} y={by0} w={bx1 - bx0} h={by1 - by0} opacity={brP} len={52} sw={5} />
-
-          {/* viewpoint dial */}
-          {dialP > 0 ? (
-            <g opacity={dialP} stroke={COLORS.ink} fill="none">
-              <path d={`M ${dial.x - dial.r} ${dial.y} A ${dial.r} ${dial.r} 0 0 1 ${dial.x + dial.r} ${dial.y}`} strokeWidth={3} />
-              {[-60, -30, 0, 30, 60].map((a) => {
-                const r = ((-90 + a) * Math.PI) / 180;
-                return (
-                  <line
-                    key={a}
-                    x1={dial.x + Math.cos(r) * (dial.r - 10)}
-                    y1={dial.y + Math.sin(r) * (dial.r - 10)}
-                    x2={dial.x + Math.cos(r) * dial.r}
-                    y2={dial.y + Math.sin(r) * dial.r}
-                    strokeWidth={3}
-                  />
-                );
-              })}
-              <line x1={dial.x} y1={dial.y} x2={dial.x + Math.cos(needle) * (dial.r - 4)} y2={dial.y + Math.sin(needle) * (dial.r - 4)} strokeWidth={5} strokeLinecap="round" />
-              <circle cx={dial.x} cy={dial.y} r={9} fill={COLORS.highlight} strokeWidth={3} />
-              <text
-                x={dial.x}
-                y={dial.y + 50}
-                textAnchor="middle"
-                fontFamily={FONT_FAMILY}
-                fontWeight={700}
-                fontSize={30}
-                fill={COLORS.ink}
-                stroke="none"
-                style={{fontVariantNumeric: 'tabular-nums'}}
-              >
-                {`${Math.round(yaw) > 0 ? '+' : ''}${Math.round(yaw)}°`}
-              </text>
-            </g>
-          ) : null}
-        </g>
-      </Svg>
-
-      <Tag text={COPY.s3.labels[0]} x={wA[0] + 30 + 8} y={wA[1] - 60} anchor="left" p={tagP(30)} size={36} />
-      <Tag text={COPY.s3.labels[1]} x={bA[0] + 30} y={bA[1] + 110} anchor="center" p={tagP(40)} size={36} />
-      <Tag text={COPY.s3.labels[2]} x={eA[0]} y={eA[1] + 82} anchor="center" p={tagP(50)} size={36} />
-
-      <ArLine text={COPY.s3.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={4} stagger={4} inDur={20} mode="slide" outAt={OUT} outMode="rise" />
-      <ArLine
-        text={COPY.s3.line2}
-        x={TEXT_RIGHT}
-        y={L2.y}
-        size={L2.size}
-        inAt={LINE2_AT}
-        inDur={14}
-        stagger={4}
-        mode="scale"
-        hl={{at: LINE2_AT + 6, dur: 12, outAt: OUT + 2, outDur: 10}}
-        outAt={OUT + 2}
-        outMode="rise"
-      />
-
-      <Sfx at={14} name="swoosh" volume={0.4} />
-      <Sfx at={16} name="tick" />
-      <Sfx at={26} name="tick" rate={1.1} />
-      <Sfx at={36} name="tick" rate={1.2} />
-      <Sfx at={58} name="click" volume={0.6} />
-      <Sfx at={98} name="click" volume={0.5} rate={1.1} />
-      <Sfx at={LINE2_AT + 6} name="impact" volume={0.55} />
-      <Sfx at={LINES_AT} name="sweep" volume={0.5} />
+      <Sfx at={6} name="pop" volume={0.6} />
+      <Sfx at={14} name="pop" rate={1.2} volume={0.5} />
+      <Sfx at={20} name="pop" rate={1.4} volume={0.5} />
+      <Sfx at={10} name="swoosh" volume={0.5} />
+      <Sfx at={48} name="swoosh" volume={0.45} rate={1.1} />
+      <Sfx at={LINE2_AT + 10} name="slam" volume={0.6} />
+      <Sfx at={86} name="swoosh" volume={0.4} rate={0.9} />
+      <Sfx at={WHIP} name="whoosh" volume={0.7} />
     </AbsoluteFill>
   );
 };

@@ -1,4 +1,5 @@
 import {loadFont} from '@remotion/fonts';
+import opentype from 'opentype.js';
 import {staticFile} from 'remotion';
 import {FONT_FAMILY} from '../config/theme';
 
@@ -11,14 +12,27 @@ const FILES: [string, string][] = [
 ];
 
 let promise: Promise<void> | null = null;
+let outlineFont: opentype.Font | null = null;
+
+/** Parsed Thmanyah Sans Black outlines (for extruded 3D digits). */
+export const getOutlineFont = () => {
+  if (!outlineFont) throw new Error('Outline font not loaded yet');
+  return outlineFont;
+};
 
 export const loadBrandFonts = () => {
   if (!promise) {
-    promise = Promise.all(
+    const faces = Promise.all(
       FILES.map(([weight, file]) =>
         loadFont({family: FONT_FAMILY, url: staticFile(`fonts/${file}`), weight, display: 'block'}),
       ),
-    ).then(() => undefined);
+    );
+    const outlines = fetch(staticFile('fonts/thmanyahsans-Black.otf'))
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        outlineFont = opentype.parse(buf);
+      });
+    promise = Promise.all([faces, outlines]).then(() => undefined);
   }
   return promise;
 };

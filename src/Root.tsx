@@ -27,6 +27,7 @@ const FilmWithFonts: React.FC = () => (
 );
 
 export const RemotionRoot: React.FC = () => (
+  <>
   <Composition
     id="ArchSaifFilm"
     component={FilmWithFonts}
@@ -35,4 +36,5 @@ export const RemotionRoot: React.FC = () => (
     width={VIDEO.width}
     height={VIDEO.height}
   />
+  </>
 );

@@ -1,184 +1,146 @@
 import React from 'react';
 import {AbsoluteFill, Img, staticFile, useCurrentFrame} from 'remotion';
-import {ArLine, HL_BOX, fitSize, measureLine} from '../components/ArLine';
-import {Brackets, CheckBadge} from '../components/Marks';
-import {APPROVED, Massing, barTop} from '../components/Massing';
-import {Band, Sfx, Svg} from '../components/Primitives';
 import {BRAND, COPY} from '../config/copy';
-import {COLORS, FONT_FAMILY, VIDEO} from '../config/theme';
-import {HANDOFF} from '../config/timeline';
-import {EASE, Key, lerp, prog, track} from '../lib/motion';
+import {COLORS, FONT_FAMILY} from '../config/theme';
+import {EASE, lerp, prog} from '../lib/motion';
+import {Panel, Sfx} from '../overlay/Overlays';
+import {Beam, Check3D} from '../three/Helpers';
+import {HudBrackets} from '../three/Hud';
+import {APPROVED_3D, Massing3D, height3D} from '../three/Massing3D';
+import {Stage} from '../three/Stage';
+import {Line3D} from '../three/Text3D';
+import {Shot, shotTrack} from '../three/shot';
 
 // ── Scene 06 · Brand resolution ───────────────────────────────────────
-// The approved system returns perfectly aligned; only the framing moves.
-// The travelling band is drawn open into the final highlight behind
-// «مش المشروع.», then condenses into the divider of the logo lock-up.
+// The approved system snaps into perfect alignment and the camera circles
+// it — the framing keeps changing, the project never does. The final
+// highlight is drawn behind «مش المشروع.», then the logo lock-up.
 
-const CX = 540;
-const BASE = 790;
-const L1 = {y: 905, size: 124};
-const L2_SIZE = 196;
-const KEY_Y = HANDOFF.s6KeyLineY; // centre of the final highlight
-const SUP = {y: 1428, size: 48};
-const HL_AT = 44;
-const EXIT = 142;
-const LOGO_AT = 150;
-const LOGO = {w: 720, cy: 830};
-const DIVIDER = {y: 1046, w: 110, h: 8};
+const L1 = {y: 1190, size: 124};
+const L2 = {y: 1370, size: 210};
+const SUP = {y: 1560, size: 48};
+const L2_AT = 34;
+const EXIT = 112;
+const LOGO_AT = 120;
+const LOGO = {w: 760, cy: 840};
+const KEY_Y = L2.y;
+
+const BASE: Shot = {tx: 0, ty: -0.3, tz: 0, dist: 26, yaw: -70, pitch: 12, roll: -5, fov: 30};
 
 export const S6Brand: React.FC = () => {
   const f = useCurrentFrame();
-
-  const l2Size = fitSize(COPY.s6.line2, L2_SIZE, 900);
-  const lineBoxH = l2Size * 1.3;
-  const l2Y = KEY_Y - (HL_BOX.top + (1.3 - HL_BOX.top - HL_BOX.bottom) / 2) * l2Size;
-  const hlW = measureLine(COPY.s6.line2, l2Size, 900) + HL_BOX.padX * l2Size * 2;
-  const hlH = lineBoxH - (HL_BOX.top + HL_BOX.bottom) * l2Size;
-
-  // band: guide line → drawn open into the highlight → condensed divider
-  const open = prog(f, HL_AT, 16, EASE.inOut);
-  const close = prog(f, EXIT + 2, 18, EASE.inOut);
-  const settle = prog(f, 0, 16, EASE.out);
-  let bw = lerp(VIDEO.width + 120, lerp(VIDEO.width - 160, hlW, open), settle);
-  let bh = lerp(HANDOFF.bandH, lerp(6, hlH, open), settle);
-  let bcy: number = KEY_Y;
-  bw = lerp(bw, DIVIDER.w, close);
-  bh = lerp(bh, DIVIDER.h, close);
-  bcy = lerp(bcy, DIVIDER.y, close);
-  const core = Math.max(1 - prog(f, HL_AT, 6), prog(f, EXIT + 10, 10));
-
-  // the approved system, aligning
-  const offsets = [160, -140, 120, -100, 80];
-  const snap = (i: number) => prog(f, 4 + i * 4, 16, EASE.out);
-  const sysOut = prog(f, EXIT - 4, 16, EASE.in);
-  const guideP = prog(f, 22, 12) * (1 - prog(f, 46, 12));
-  const gridP = prog(f, 2, 24, EASE.inOut);
-
-  // framing changes; the system stays put
-  const fr = (k: 0 | 1 | 2 | 3) => [
-    [228, 400, 624, 470],
-    [330, 452, 420, 372],
-    [204, 420, 640, 430],
-    [282, 418, 516, 404],
-  ][k];
-  const frameKeys = (j: number): Key[] => [
-    [6, fr(0)[j]],
-    [30, fr(1)[j]],
-    [52, fr(2)[j]],
-    [74, fr(3)[j]],
-  ];
-  const brRot = track(f, [
-    [6, 0],
-    [30, -7],
-    [52, 5],
-    [74, 0],
+  const shot = shotTrack(f, BASE, [
+    [0, {}],
+    [40, {yaw: -20, pitch: 22, roll: 3, dist: 24}, EASE.inOut],
+    [76, {yaw: 30, pitch: 8, roll: -2, dist: 25}, EASE.inOut],
+    [EXIT, {yaw: 60, pitch: 16, roll: 0, dist: 26}, EASE.inOut],
+    [LOGO_AT + 8, {ty: 6, pitch: 60, dist: 30}, EASE.in],
   ]);
-  const brP = prog(f, 6, 10) * (1 - sysOut);
 
-  // logo lock-up
-  const logoP = prog(f, LOGO_AT, 34, EASE.smooth);
-  const nameP = prog(f, LOGO_AT + 22, 18, EASE.out);
-  const handleP = prog(f, LOGO_AT + 30, 18, EASE.out);
+  // the pale flood from Scene 05 collapses into a guide line where the
+  // final highlight will be drawn
+  const collapse = prog(f, 0, 12, EASE.out);
+  const shrink = prog(f, 12, 14, EASE.inOut);
+
+  const snap = (i: number) => prog(f, 4 + i * 3, 12, EASE.overshoot);
+  const offs = [2.2, -1.8, 1.6, -1.4, 1.2];
+  const sink = prog(f, EXIT, 14, EASE.in);
+  const guide = prog(f, 18, 8) * (1 - prog(f, 40, 10));
+
+  const logoP = prog(f, LOGO_AT, 30, EASE.smooth);
+  const nameP = prog(f, LOGO_AT + 18, 16, EASE.out);
+  const handleP = prog(f, LOGO_AT + 26, 16, EASE.out);
   const logoH = LOGO.w / (1745 / 757);
+  const brackets = [
+    [150, 360, 780, 760],
+    [260, 430, 560, 600],
+    [120, 330, 840, 820],
+    [210, 400, 660, 680],
+  ];
+  const bk = Math.min(3, Math.floor(f / 24));
+  const bt = prog(f, bk * 24, 10, EASE.out);
+  const prev = brackets[Math.max(0, bk - 1)];
+  const cur = brackets[bk];
+  const br = cur.map((v, i) => lerp(prev[i], v, bt));
 
   return (
     <AbsoluteFill>
-      <Svg>
-        <g opacity={(1 - sysOut) * gridP * 0.5} stroke={COLORS.ink} strokeWidth={1.5}>
-          {Array.from({length: 11}, (_, i) => 240 + i * 60).map((x) => (
-            <line key={`v${x}`} x1={x} y1={BASE - 400 * gridP} x2={x} y2={BASE + 30} opacity={0.35} />
-          ))}
-          {Array.from({length: 8}, (_, i) => BASE - i * 60).map((y) => (
-            <line key={`h${y}`} x1={CX - 300 * gridP} y1={y} x2={CX + 300 * gridP} y2={y} opacity={0.35} />
-          ))}
-        </g>
-        <g opacity={1 - sysOut} transform={`translate(0 ${-sysOut * 40})`}>
-          <line x1={CX - 230} y1={BASE + 3} x2={CX + 230} y2={BASE + 3} stroke={COLORS.ink} strokeWidth={4} opacity={prog(f, 4, 10)} />
-          <Massing cx={CX} baseY={BASE} params={APPROVED} offsetX={(i) => offsets[i] * (1 - snap(i))} build={prog(f, 2, 20, EASE.out)} />
-          {guideP > 0 ? (
-            <g stroke={COLORS.ink} strokeWidth={2.5} strokeDasharray="6 7" opacity={guideP}>
-              <line x1={CX - 160} y1={BASE + 40} x2={CX - 160} y2={barTop(APPROVED, BASE, 4) - 50} />
-              <line x1={CX + 160} y1={BASE + 40} x2={CX + 160} y2={barTop(APPROVED, BASE, 4) - 50} />
-            </g>
-          ) : null}
-          <CheckBadge x={CX + 194} y={barTop(APPROVED, BASE, 4) - 14} r={24} p={prog(f, 30, 12)} />
-          <Brackets
-            x={track(f, frameKeys(0))}
-            y={track(f, frameKeys(1))}
-            w={track(f, frameKeys(2))}
-            h={track(f, frameKeys(3))}
-            rotate={brRot}
-            len={50}
-            sw={5}
-            opacity={brP}
-          />
-          {/* fixed anchor: the system's centre never moves */}
-          <circle cx={CX} cy={BASE - 143} r={7} fill={COLORS.highlight} stroke={COLORS.ink} strokeWidth={3} opacity={brP} />
-        </g>
-      </Svg>
-
-      <Band left={CX - bw / 2} top={bcy - bh / 2} width={bw} height={bh} core={core} radius={lerp(4, 0.06 * l2Size, open)} />
-
-      <ArLine
-        text={COPY.s6.line1}
-        x={CX}
-        y={L1.y}
-        align="center"
-        size={L1.size}
-        inAt={12}
-        inDur={20}
-        stagger={7}
-        mode="turn"
-        outAt={EXIT}
-        outMode="rise"
-      />
-      <ArLine
-        text={COPY.s6.line2}
-        x={CX}
-        y={l2Y}
-        align="center"
-        size={L2_SIZE}
-        inAt={HL_AT + 6}
-        inDur={20}
-        stagger={5}
-        mode="scale"
-        ease={EASE.overshoot}
-        outAt={EXIT}
-        outStagger={2}
-        outMode="rise"
-      />
-      {COPY.s6.support.map((t, i) => (
-        <ArLine
-          key={i}
-          text={t}
-          x={CX}
-          y={SUP.y + i * 70}
-          align="center"
-          size={SUP.size}
-          weight={500}
-          inAt={78 + i * 9}
-          inDur={20}
-          mode="wipe"
-          outAt={EXIT - 6 + i * 2}
-          outMode="fade"
+      <Stage
+        shot={shot}
+        lightCenter={[0, 1, 0]}
+        hud={
+          <>
+            <Line3D text={COPY.s6.line1} x={540} y={L1.y} align="center" size={L1.size} inAt={10} inDur={18} stagger={6} mode="spin" outAt={EXIT} outMode="flyOut" />
+            <Line3D
+              text={COPY.s6.line2}
+              x={540}
+              y={L2.y}
+              align="center"
+              size={L2.size}
+              inAt={L2_AT}
+              inDur={14}
+              stagger={4}
+              mode="slam"
+              hl={{at: L2_AT + 8, dur: 12, outAt: EXIT + 2, outDur: 10}}
+              outAt={EXIT + 2}
+              outMode="flyOut"
+            />
+            {COPY.s6.support.map((t, i) => (
+              <Line3D key={i} text={t} x={540} y={SUP.y + i * 64} align="center" size={SUP.size} weight={500} depth={6} inAt={60 + i * 6} stagger={2} mode="rise" outAt={EXIT - 4} outMode="flipOut" />
+            ))}
+            <HudBrackets x={br[0]} y={br[1]} w={br[2]} h={br[3]} opacity={prog(f, 6, 8) * (1 - prog(f, EXIT - 6, 8))} />
+          </>
+        }
+      >
+        <Massing3D
+          params={APPROVED_3D}
+          floorFx={(i) => ({dx: offs[i] * (1 - snap(i)), show: Math.min(1, snap(i) * 3) * (1 - prog(f, EXIT + i * 1.5, 10, EASE.in))})}
         />
-      ))}
+        {guide > 0 ? (
+          <>
+            <Beam length={0.04} position={[APPROVED_3D.w / 2 + 0.06, 0, 0]} />
+            {[-1, 1].map((s) => (
+              <mesh key={s} position={[(s * APPROVED_3D.w) / 2 + s * 0.04, height3D(APPROVED_3D) / 2 + 0.3, APPROVED_3D.d / 2 + 0.05]} scale={[1, guide, 1]}>
+                <boxGeometry args={[0.03, height3D(APPROVED_3D) + 1.2, 0.03]} />
+                <meshBasicMaterial color={COLORS.highlight} />
+              </mesh>
+            ))}
+          </>
+        ) : null}
+        <Check3D p={prog(f, 26, 10) * (1 - sink)} position={[APPROVED_3D.w / 2 + 0.3, height3D(APPROVED_3D) + 0.6, APPROVED_3D.d / 2]} size={0.45} yaw={-10} />
+      </Stage>
 
-      {/* logo lock-up: original artwork, revealed right→left with a soft edge */}
+      {collapse < 1 || shrink < 1 ? (
+        <Panel
+          left={lerp(-40, -40 + 600 * shrink, 1)}
+          top={lerp(-40, KEY_Y - 7, collapse)}
+          width={lerp(1160, 0, shrink)}
+          height={lerp(2000, 14, collapse)}
+          core={collapse}
+          radius={0}
+        />
+      ) : null}
+
+      {/* logo lock-up: the original artwork, revealed right→left, settling from a 3D tilt */}
       {logoP > 0 ? (
-        <Img
-          src={staticFile('brand/archsaif-logo.png')}
-          style={{
-            position: 'absolute',
-            left: CX - LOGO.w / 2,
-            top: LOGO.cy - logoH / 2,
-            width: LOGO.w,
-            height: logoH,
-            transform: `scale(${lerp(1.05, 1, logoP)})`,
-            WebkitMaskImage: `linear-gradient(to left, #000 ${logoP * 130 - 30}%, transparent ${logoP * 130}%)`,
-            maskImage: `linear-gradient(to left, #000 ${logoP * 130 - 30}%, transparent ${logoP * 130}%)`,
-          }}
-        />
+        <div style={{position: 'absolute', inset: 0, perspective: 1400}}>
+          <Img
+            src={staticFile('brand/archsaif-logo.png')}
+            style={{
+              position: 'absolute',
+              left: 540 - LOGO.w / 2,
+              top: LOGO.cy - logoH / 2,
+              width: LOGO.w,
+              height: logoH,
+              transform: `rotateY(${(1 - logoP) * -38}deg) rotateX(${(1 - logoP) * 12}deg) scale(${lerp(1.15, 1, logoP)})`,
+              WebkitMaskImage: `linear-gradient(to left, #000 ${logoP * 130 - 30}%, transparent ${logoP * 130}%)`,
+              maskImage: `linear-gradient(to left, #000 ${logoP * 130 - 30}%, transparent ${logoP * 130}%)`,
+            }}
+          />
+        </div>
+      ) : null}
+      {logoP > 0.5 ? (
+        <Panel left={540 - 55 * prog(f, LOGO_AT + 14, 12, EASE.out)} top={1066} width={110 * prog(f, LOGO_AT + 14, 12, EASE.out)} height={8} core={1} radius={4} />
       ) : null}
       {nameP > 0 ? (
         <div
@@ -186,63 +148,38 @@ export const S6Brand: React.FC = () => {
             position: 'absolute',
             left: 0,
             right: 0,
-            top: 1088,
+            top: 1098,
             textAlign: 'center',
             fontFamily: FONT_FAMILY,
             fontWeight: 700,
-            fontSize: 70,
-            letterSpacing: '0.01em',
+            fontSize: 74,
             color: COLORS.ink,
             direction: 'ltr',
             opacity: nameP,
-            transform: `translateY(${(1 - nameP) * 26}px)`,
+            transform: `translateY(${(1 - nameP) * 30}px)`,
           }}
         >
           {BRAND.name}
         </div>
       ) : null}
       {handleP > 0 ? (
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 1200,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 26,
-            direction: 'ltr',
-          }}
-        >
+        <div style={{position: 'absolute', left: 0, right: 0, top: 1214, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 26, direction: 'ltr'}}>
           <div style={{width: 64 * handleP, height: 3, background: COLORS.ink}} />
-          <div
-            style={{
-              fontFamily: FONT_FAMILY,
-              fontWeight: 700,
-              fontSize: 30,
-              letterSpacing: '0.3em',
-              marginRight: '-0.3em',
-              color: COLORS.ink,
-              opacity: handleP,
-            }}
-          >
-            {BRAND.handle}
-          </div>
+          <div style={{fontFamily: FONT_FAMILY, fontWeight: 700, fontSize: 30, letterSpacing: '0.3em', marginRight: '-0.3em', color: COLORS.ink, opacity: handleP}}>{BRAND.handle}</div>
           <div style={{width: 64 * handleP, height: 3, background: COLORS.ink}} />
         </div>
       ) : null}
 
       {[0, 1, 2, 3, 4].map((i) => (
-        <Sfx key={i} at={6 + i * 4} name="tick" volume={0.45} rate={1.2 + i * 0.04} />
+        <Sfx key={i} at={4 + i * 3 + 8} name="tick" volume={0.45} rate={1.2 + i * 0.04} />
       ))}
-      <Sfx at={14} name="click" volume={0.5} rate={0.9} />
-      <Sfx at={30} name="click" />
-      <Sfx at={52} name="click" rate={1.1} />
-      <Sfx at={HL_AT} name="sweep" />
-      <Sfx at={HL_AT + 10} name="impact" volume={0.62} />
-      <Sfx at={74} name="align" volume={0.7} />
-      <Sfx at={EXIT + 2} name="whoosh" volume={0.3} />
+      <Sfx at={10} name="swoosh" volume={0.5} />
+      <Sfx at={L2_AT + 6} name="slam" volume={0.65} />
+      <Sfx at={L2_AT + 8} name="sweep" volume={0.6} />
+      <Sfx at={24} name="click" />
+      <Sfx at={48} name="click" rate={1.1} />
+      <Sfx at={72} name="click" rate={1.2} />
+      <Sfx at={EXIT} name="whoosh" volume={0.45} />
       <Sfx at={LOGO_AT} name="resolve" />
     </AbsoluteFill>
   );

@@ -1,238 +1,159 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {ArLine, highlightRect} from '../components/ArLine';
-import {HatchDefs} from '../components/Marks';
-import {Band, Camera, Sfx, Svg} from '../components/Primitives';
+import * as THREE from 'three';
 import {COPY} from '../config/copy';
-import {COLORS, FONT_FAMILY, TEXT_RIGHT, VIDEO} from '../config/theme';
-import {HANDOFF} from '../config/timeline';
-import {EASE, Key, lerp, prog, shake, track, tween} from '../lib/motion';
+import {TEXT_RIGHT} from '../config/theme';
+import {EASE, prog, shake, tween} from '../lib/motion';
+import {Panel, Sfx} from '../overlay/Overlays';
+import {Burst} from '../three/Burst';
+import {Digit3D} from '../three/Digit3D';
+import {Massing3D, Params3D, Slab, floorY} from '../three/Massing3D';
+import {Stage} from '../three/Stage';
+import {Line3D, lineLayout} from '../three/Text3D';
+import {Shot, shotTrack} from '../three/shot';
 
 // ── Scene 01 · The hook ────────────────────────────────────────────────
-// A massive 5 → five strips assemble (floors) → a sixth strip drops in
-// uninvited → the digit rolls to 6 and takes over → the highlight behind
-// the question stretches into the reference line of Scene 02.
+// Macro on an extruded 5 → five slabs crash down on the beat → a sixth,
+// uninvited slab slams on top (debris, camera jolt) → the digit flips to
+// reveal 6 → the highlight behind the question floods the frame.
 
-const STACK = {cx: 770, w: 380, h: 52, gap: 18, baseY: 985};
-const stripTop = (i: number) => STACK.baseY - (i + 1) * STACK.h - i * STACK.gap;
-const LAND = [24, 30, 36, 42, 48];
-const SIXTH = {from: 76, land: 88};
-const ROLL = {at: 92, dur: 14};
-const L1 = {y: 1120, size: 112};
-const L2 = {y: 1262, size: 124};
-const SUP = {y: 1488, size: 46, at: 130};
-const OUT = 174;
-const HANDOFF_AT = 188;
-const END = 205;
+const STACK: Params3D = {floors: 5, w: 2.6, h: 0.46, d: 2.0, gap: 0.2, pattern: 0};
+const STACK_POS: [number, number, number] = [0.95, 0, -0.9];
+const DIGIT_POS: [number, number, number] = [-1.2, 0, 1.0];
+const LAND = [20, 26, 32, 38, 44];
+const SIX = {from: 62, land: 72};
+const FLIP = {at: 76, dur: 16};
+const L1 = {y: 1250, size: 112};
+const L2 = {y: 1400, size: 128};
+const SUP = {y: 1548, size: 44, at: 104};
+const OUT = 136;
+const WIPE = 146;
+const END = 160;
 
-const DIGIT_FONT = 1400;
+const BASE: Shot = {tx: -1.2, ty: 1.6, tz: 1.0, dist: 4.3, yaw: -32, pitch: 2, roll: -9, fov: 34};
 
 export const S1Hook: React.FC = () => {
   const f = useCurrentFrame();
 
-  // ── virtual camera: slow push while holding, jolt on the uninvited strip
-  const camScale = track(f, [
-    [0, 1.0],
-    [78, 1.035, EASE.smooth],
-    [88, 1.05, EASE.in],
-    [100, 1.0, EASE.out],
-    [170, 1.015, EASE.smooth],
+  const shot = shotTrack(f, BASE, [
+    [0, {}],
+    [36, {tx: -0.55, ty: 0.15, tz: 0, dist: 19.5, yaw: 26, pitch: 9, roll: 0, fov: 30}, EASE.inOut],
+    [64, {yaw: 34, dist: 18.8}, EASE.smooth],
+    [72, {dist: 18.2}, EASE.in],
+    [100, {tx: -0.95, ty: 0.35, tz: 0.3, dist: 15.5, yaw: 12, pitch: 5, roll: 2.5, fov: 31}, EASE.out],
+    [136, {yaw: 4, dist: 15, roll: 0}, EASE.smooth],
+    [END, {dist: 12, pitch: 2}, EASE.in],
   ]);
-  const jx = shake(f, SIXTH.land, 9, 12);
-  const jy = shake(f + 3, SIXTH.land, 12, 12);
+  // impact jolt
+  shot.tx += shake(f, SIX.land, 0.16, 14);
+  shot.ty += shake(f + 3, SIX.land, 0.2, 14);
+  shot.roll += shake(f + 1, SIX.land, 2.2, 14);
+  LAND.forEach((l) => {
+    shot.ty += shake(f, l, 0.04, 6);
+  });
 
-  // ── the digit: full-frame punch → slot beside the stack → grows as 6
-  const dKeys = {
-    s: [
-      [0, 0.98],
-      [10, 0.86, EASE.out],
-      [34, 0.43, EASE.inOut],
-      [104, 0.43],
-      [128, 0.6, EASE.out],
-    ] as Key[],
-    x: [
-      [10, 540],
-      [34, 292, EASE.inOut],
-      [104, 292],
-      [128, 300, EASE.out],
-    ] as Key[],
-    y: [
-      [10, 930],
-      [34, 760, EASE.inOut],
-      [104, 760],
-      [128, 735, EASE.out],
-    ] as Key[],
+  // digit: swings in, then flips to show the 6 on its back
+  const swing = tween(f, 0, 16, -75, 0, EASE.overshoot);
+  const flip = prog(f, FLIP.at, FLIP.dur, EASE.inOut);
+  const lift = Math.sin(flip * Math.PI) * 0.7;
+  const grow = tween(f, FLIP.at + 12, FLIP.at + 26, 1, 1.18, EASE.overshoot);
+  const dExit = prog(f, OUT + 4, 16, EASE.in);
+
+  // floors: fall with acceleration, squash on landing
+  const squashAll = f >= SIX.land ? Math.sin((f - SIX.land) * 0.85) * 0.12 * Math.exp(-(f - SIX.land) * 0.2) : 0;
+  const floorFx = (i: number) => {
+    const land = LAND[i];
+    const fall = prog(f, land - 9, 9, EASE.in);
+    const t = f - land;
+    const sq = t >= 0 ? Math.sin(t * 1.1) * 0.22 * Math.exp(-t * 0.35) : 0;
+    const out = prog(f, OUT + (4 - i) * 2, 12, EASE.in);
+    return {
+      dy: (1 - fall) * 7 - out * 6,
+      sy: 1 - sq - squashAll,
+      sx: 1 + sq * 0.4,
+      sz: 1 + sq * 0.4,
+      show: fall > 0 ? 1 - out : 0,
+    };
   };
-  const pulse5 = Math.sin(Math.min(Math.max(f - LAND[4], 0), 10) / 10 * Math.PI) * 0.05;
-  const dScale = track(f, dKeys.s) * (1 + pulse5);
-  const dIntroOp = tween(f, 0, 6, 0.35, 1, EASE.out);
-  const dBlur = tween(f, 0, 9, 18, 0, EASE.out);
-  const roll = prog(f, ROLL.at, ROLL.dur, EASE.inOut);
-  const dExit = prog(f, OUT, 16, EASE.in);
+  const sixFall = prog(f, SIX.from, SIX.land - SIX.from, EASE.in);
+  const sixY = floorY(STACK, 5) + (1 - sixFall) * 11;
+  const sixOut = prog(f, OUT, 12, EASE.in);
 
-  // ── stack transforms (squash on impact, make room while the 6 grows)
-  const squash = f >= SIXTH.land ? Math.sin((f - SIXTH.land) * 0.9) * 0.06 * Math.exp(-(f - SIXTH.land) * 0.22) : 0;
-  const stackShift = tween(f, 104, 128, 0, 22, EASE.out);
-  const stackScale = tween(f, 104, 128, 1, 0.94, EASE.out);
-
-  const strip = (i: number) => {
-    const p = prog(f, LAND[i] - 12, 12, EASE.out);
-    if (p <= 0) return null;
-    const dir = i % 2 === 0 ? 1 : -1;
-    const x = STACK.cx - STACK.w / 2 + (1 - p) * 900 * dir;
-    const smear = 1 + (1 - p) * 0.7;
-    const exit = prog(f, OUT + (5 - i) * 2, 11, EASE.in);
-    const y = stripTop(i);
-    return (
-      <g key={i} transform={`translate(${STACK.cx} ${y + STACK.h / 2}) scale(${smear * (1 - exit)} 1) translate(${-STACK.cx} ${-(y + STACK.h / 2)})`}>
-        <rect x={x} y={y} width={STACK.w} height={STACK.h} rx={6} fill={COLORS.ink} />
-        <text
-          x={x + STACK.w - 22}
-          y={y + STACK.h / 2 + 9}
-          textAnchor="end"
-          fontFamily={FONT_FAMILY}
-          fontWeight={700}
-          fontSize={24}
-          fill={COLORS.bg}
-          letterSpacing={2}
-          opacity={prog(f, LAND[i], 8)}
-        >
-          {`0${i + 1}`}
-        </text>
-      </g>
-    );
-  };
-
-  // sixth strip: accelerating drop, lands on top of the five
-  const sixP = tween(f, SIXTH.from, SIXTH.land, 0, 1, EASE.in);
-  const sixY = lerp(-180, stripTop(5), sixP);
-  const sixExit = prog(f, OUT, 11, EASE.in);
-
-  // dimension bracket on the right of the stack
-  const bx = STACK.cx + STACK.w / 2 + 34;
-  const built = LAND.reduce((a, l) => a + prog(f, l - 4, 8, EASE.out), 0);
-  const bracketTop = STACK.baseY - built * (STACK.h + STACK.gap) + STACK.gap * Math.min(1, built);
-  const extP = prog(f, SIXTH.land + 2, 12, EASE.out);
-  const ghostP = prog(f, SIXTH.land + 2, 16, EASE.out);
-  const fiveTop = stripTop(4);
-  const geomExit = prog(f, OUT, 14, EASE.in);
-
-  // ── hand-off: the highlight behind the question becomes the reference line
-  const r0 = highlightRect(COPY.s1.line2, TEXT_RIGHT, L2.y, L2.size);
-  const m = prog(f, HANDOFF_AT, END - HANDOFF_AT, EASE.inOut);
-  const band = {
-    left: lerp(r0.left, -60, m),
-    top: lerp(r0.top, HANDOFF.datumY - HANDOFF.bandH / 2, m),
-    width: lerp(r0.width, VIDEO.width + 120, m),
-    height: lerp(r0.height, HANDOFF.bandH, m),
-  };
+  // highlight → full-frame wipe (screen space)
+  const l2 = lineLayout(COPY.s1.line2, L2.size, 900, 912);
+  const padX = l2.size * 0.24;
+  const r0 = {left: TEXT_RIGHT - l2.width - padX, top: L2.y + l2.size * 0.04 - (l2.size * 1.18) / 2, width: l2.width + padX * 2, height: l2.size * 1.18};
+  const w = prog(f, WIPE, END - WIPE, EASE.in);
 
   return (
     <AbsoluteFill>
-      <Camera scale={camScale} x={jx} y={jy} pivot={[540, 900]}>
-        {/* the digit */}
-        <div
-          style={{
-            position: 'absolute',
-            left: track(f, dKeys.x),
-            top: track(f, dKeys.y),
-            transform: `translate(-50%, -50%) scale(${dScale}) translateY(${-dExit * 12}%)`,
-            fontFamily: FONT_FAMILY,
-            fontWeight: 900,
-            fontSize: DIGIT_FONT,
-            lineHeight: 1,
-            color: COLORS.ink,
-            opacity: dIntroOp * (1 - dExit),
-            filter: dBlur > 0.2 ? `blur(${dBlur}px)` : undefined,
-          }}
-        >
-          <div style={{position: 'relative', overflow: 'hidden', height: '1.08em', width: '0.62em', textAlign: 'center'}}>
-            <div style={{position: 'absolute', inset: 0, transform: `translateY(${-roll * 105}%)`}}>5</div>
-            <div style={{position: 'absolute', inset: 0, transform: `translateY(${(1 - roll) * 105}%)`}}>6</div>
-          </div>
-        </div>
+      <Stage
+        shot={shot}
+        lightCenter={[0, 1, 0]}
+        hud={
+          <>
+            <Line3D text={COPY.s1.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={22} stagger={4} mode="flip" outAt={OUT} outMode="flyOut" />
+            <Line3D
+              text={COPY.s1.line2}
+              x={TEXT_RIGHT}
+              y={L2.y}
+              size={L2.size}
+              inAt={78}
+              inDur={14}
+              stagger={3}
+              mode="slam"
+              outAt={OUT + 4}
+              outMode="flyOut"
+              outStagger={1}
+              hl={{at: 88, dur: 12}}
+            />
+            {COPY.s1.support.map((t, i) => (
+              <Line3D key={i} text={t} x={TEXT_RIGHT} y={SUP.y + i * 58} size={SUP.size} weight={500} depth={6} inAt={SUP.at + i * 5} stagger={2} mode="rise" outAt={OUT - 6} outMode="flipOut" />
+            ))}
+          </>
+        }
+      >
+        {/* the digit pair: 5 on the front, 6 on the back */}
+        <group position={[DIGIT_POS[0], DIGIT_POS[1] + lift, DIGIT_POS[2]]} rotation={[0, THREE.MathUtils.degToRad(swing + flip * 180), 0]} scale={grow * (1 - dExit)}>
+          <group position={[0, 0, 0.42]}>
+            <Digit3D char="5" height={3.0} depth={0.7} />
+          </group>
+          <group position={[0, 0, -0.42]} rotation={[0, Math.PI, 0]}>
+            <Digit3D char="6" height={3.0} depth={0.7} />
+          </group>
+        </group>
 
-        <Svg>
-          <HatchDefs id="s1hatch" spacing={11} width={2.4} />
-          <g
-            transform={`translate(${stackShift} 0) translate(${STACK.cx} ${STACK.baseY}) scale(${stackScale} ${stackScale * (1 - squash)}) translate(${-STACK.cx} ${-STACK.baseY})`}
-          >
-            {[0, 1, 2, 3, 4].map(strip)}
+        <Massing3D params={STACK} position={STACK_POS} floorFx={floorFx} />
 
-            {/* the uninvited sixth strip */}
-            {sixP > 0 && sixExit < 1 ? (
-              <g opacity={1 - sixExit}>
-                <rect x={STACK.cx - STACK.w / 2} y={sixY} width={STACK.w} height={STACK.h} rx={6} fill={COLORS.highlight} stroke={COLORS.ink} strokeWidth={3} />
-                <rect x={STACK.cx - STACK.w / 2} y={sixY} width={STACK.w} height={STACK.h} rx={6} fill="url(#s1hatch)" opacity={0.32} />
-                <text x={STACK.cx + STACK.w / 2 - 22} y={sixY + STACK.h / 2 + 9} textAnchor="end" fontFamily={FONT_FAMILY} fontWeight={700} fontSize={24} fill={COLORS.ink} letterSpacing={2}>
-                  06
-                </text>
-              </g>
-            ) : null}
+        {/* the uninvited sixth slab */}
+        {sixFall > 0 && sixOut < 1 ? (
+          <group position={[STACK_POS[0], sixY - sixOut * 6, STACK_POS[2]]} scale={[1, 1 - squashAll * 1.4, 1]}>
+            <Slab w={STACK.w} h={STACK.h} d={STACK.d} look="hatch" />
+          </group>
+        ) : null}
+        <Burst t={(f - SIX.land) / 30} origin={[STACK_POS[0], floorY(STACK, 5), STACK_POS[2]]} count={30} power={1.1} />
+      </Stage>
 
-            {/* dimension bracket: solid for the approved five, dashed for the extra floor */}
-            <g opacity={1 - geomExit} stroke={COLORS.ink} strokeWidth={3} strokeLinecap="round">
-              {built > 0 ? (
-                <>
-                  <line x1={bx} y1={STACK.baseY} x2={bx} y2={bracketTop} />
-                  <line x1={bx - 10} y1={STACK.baseY} x2={bx + 10} y2={STACK.baseY} />
-                  <line x1={bx - 10} y1={bracketTop} x2={bx + 10} y2={bracketTop} />
-                </>
-              ) : null}
-              {extP > 0 ? (
-                <>
-                  <line x1={bx} y1={fiveTop} x2={bx} y2={lerp(fiveTop, stripTop(5), extP)} strokeDasharray="8 8" />
-                  <line x1={bx - 10} y1={stripTop(5)} x2={bx + 10} y2={stripTop(5)} opacity={extP} />
-                </>
-              ) : null}
-            </g>
-            {/* ghost of the approved height */}
-            {ghostP > 0 ? (
-              <line
-                x1={STACK.cx + STACK.w / 2 + 60}
-                y1={fiveTop - STACK.gap / 2}
-                x2={lerp(STACK.cx + STACK.w / 2 + 60, STACK.cx - STACK.w / 2 - 40, ghostP)}
-                y2={fiveTop - STACK.gap / 2}
-                stroke={COLORS.ink}
-                strokeWidth={2.5}
-                strokeDasharray="10 9"
-                opacity={1 - geomExit}
-              />
-            ) : null}
-          </g>
-        </Svg>
-      </Camera>
-
-      {/* typography sits outside the jolt so it stays crisp */}
-      <ArLine text={COPY.s1.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={44} stagger={4} mode="rise" outAt={OUT + 2} outMode="rise" />
-      <ArLine
-        text={COPY.s1.line2}
-        x={TEXT_RIGHT}
-        y={L2.y}
-        size={L2.size}
-        inAt={100}
-        inDur={16}
-        stagger={4}
-        mode="scale"
-        outAt={178}
-        outStagger={1}
-        outMode="rise"
-        hl={{at: 110, dur: 16, hideFrom: HANDOFF_AT}}
-      />
-      {COPY.s1.support.map((t, i) => (
-        <ArLine key={i} text={t} x={TEXT_RIGHT} y={SUP.y + i * 66} size={SUP.size} weight={500} inAt={SUP.at + i * 8} inDur={18} mode="wipe" outAt={OUT - 4 + i * 2} outMode="fade" />
-      ))}
-
-      {f >= HANDOFF_AT ? <Band {...band} core={prog(f, 196, 9, EASE.out)} /> : null}
+      {f >= WIPE ? (
+        <Panel
+          left={r0.left * (1 - w) - 40 * w}
+          top={r0.top * (1 - w) - 40 * w}
+          width={r0.width * (1 - w) + 1160 * w}
+          height={r0.height * (1 - w) + 2000 * w}
+          radius={8 * (1 - w)}
+        />
+      ) : null}
 
       {LAND.map((l, i) => (
-        <Sfx key={i} at={l - 2} name="tick" rate={1 + i * 0.07} />
+        <Sfx key={i} at={l} name="thud" rate={1 + i * 0.06} volume={0.8} />
       ))}
-      <Sfx at={0} name="thud" />
-      <Sfx at={SIXTH.land} name="impact" volume={0.5} />
-      <Sfx at={ROLL.at} name="click" />
-      <Sfx at={110} name="sweep" />
-      <Sfx at={HANDOFF_AT} name="swoosh" volume={0.45} />
+      <Sfx at={0} name="whoosh" volume={0.5} />
+      <Sfx at={SIX.from} name="riser" volume={0.6} />
+      <Sfx at={SIX.land} name="impact" volume={0.6} />
+      <Sfx at={FLIP.at} name="swoosh" volume={0.6} />
+      <Sfx at={88} name="sweep" volume={0.7} />
+      <Sfx at={OUT} name="whoosh" volume={0.5} />
+      <Sfx at={WIPE} name="slam" volume={0.6} />
     </AbsoluteFill>
   );
 };

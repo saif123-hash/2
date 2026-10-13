@@ -1,269 +1,195 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {ArLine} from '../components/ArLine';
-import {CheckBadge, HatchDefs} from '../components/Marks';
-import {Massing, MassingParams} from '../components/Massing';
-import {Band, Sfx, Svg} from '../components/Primitives';
+import * as THREE from 'three';
 import {COPY} from '../config/copy';
-import {COLORS, TEXT_RIGHT, VIDEO} from '../config/theme';
-import {HANDOFF} from '../config/timeline';
-import {EASE, Key, lerp, prog, track} from '../lib/motion';
+import {COLORS, TEXT_RIGHT} from '../config/theme';
+import {EASE, Key, clamp01, lerp, prog, track} from '../lib/motion';
+import {Panel, Sfx} from '../overlay/Overlays';
+import {Beam, Check3D, EnvelopeBox} from '../three/Helpers';
+import {APPROVED_3D, Massing3D, height3D} from '../three/Massing3D';
+import {Stage} from '../three/Stage';
+import {Line3D} from '../three/Text3D';
+import {Shot, shotTrack} from '../three/shot';
 
 // ── Scene 05 · Review the entire video ────────────────────────────────
-// One state, then the camera pulls back to the whole sequence. First and
-// last states pass; the review indicator travels the sequence, stops on
-// the transition where the openings drop out, fixes it, and moves on.
+// The ground line is now a review rail. One state, then the camera pulls
+// back over the whole sequence. A glowing review gate travels the rail,
+// stops on the in-between state where the openings drop out, fixes it,
+// moves on, then turns flat and flies into the lens.
 
-const TRACK = HANDOFF.trackY;
+const Z = 2;
 const N = 7;
-const STEP = 320;
-const ERR = 4; // index of the faulty in-between state
-const NODE: MassingParams = {floors: 5, barW: 150, barH: 22, gap: 7, pattern: 0};
-const NODE_H = 5 * 22 + 4 * 7;
-const ERR_AT = 100;
-const FIX_AT = 118;
-const RESUME = 134;
-const DONE = 158;
-const OUT = 160;
-const END = 188;
-const L1 = {y: 214, size: 104};
-const L2 = {y: 352, size: 128};
-const SUP = {y: 1318, size: 46};
-const PH_H = 360;
+const SCALE = 0.34;
+const X = (i: number) => -2 - i * 3.4;
+const ERR = 4;
+const GATE = {start: 46, err: 70, resume: 98, done: 118};
+const OUT = 122;
+const FLY = 126;
+const END = 144;
+const L1 = {y: 300, size: 104};
+const L2 = {y: 450, size: 128};
+const SUP = {y: 1520, size: 46};
+
+const BASE: Shot = {tx: 0, ty: 0.2, tz: 2, dist: 9, yaw: 90, pitch: 4, roll: 0, fov: 30};
 
 export const S5Review: React.FC = () => {
   const f = useCurrentFrame();
 
-  const ph = track(f, [
-    [60, 0],
-    [ERR_AT, ERR * STEP, EASE.smooth],
-    [RESUME, ERR * STEP],
-    [DONE, (N - 1) * STEP, EASE.smooth],
-  ]);
-  const sKeys: Key[] = [
-    [0, 2.5],
-    [12, 2.5],
-    [46, 0.42, EASE.inOut],
-    [54, 0.42],
-    [70, 0.95, EASE.inOut],
-    [ERR_AT - 4, 0.95],
-    [ERR_AT + 8, 1.5, EASE.out],
-    [RESUME - 2, 1.5],
-    [RESUME + 10, 0.95, EASE.inOut],
-  ];
-  const s = track(f, sKeys);
-  const follow = prog(f, 54, 16, EASE.inOut);
-  const overviewFx = track(f, [
-    [12, 0],
-    [46, ((N - 1) * STEP) / 2, EASE.inOut],
-  ]);
-  const fx = lerp(overviewFx, ph, follow);
-  const toX = (wx: number) => 540 + (wx - fx) * s;
+  const gx = track(f, [
+    [GATE.start, X(0) + 1.6],
+    [GATE.err, X(ERR) + 1.0, EASE.smooth],
+    [GATE.resume, X(ERR) + 1.0],
+    [GATE.done, X(N - 1) - 1.2, EASE.smooth],
+  ] as Key[]);
+  const follow = prog(f, 40, 14, EASE.inOut);
 
-  const out = prog(f, OUT, 14, EASE.in);
-  const errP = prog(f, ERR_AT + 2, 14, EASE.out);
-  const fixP = prog(f, FIX_AT, 14, EASE.inOut);
-
-  const nodes = Array.from({length: N}, (_, i) => {
-    const wx = i * STEP;
-    const appear = i === 0 ? prog(f, 0, 14, EASE.out) : prog(f, 16 + i * 3, 12, EASE.out);
-    const passed = follow > 0 && ph >= wx - 2 && f >= 60;
-    const skew = lerp(-16, 16, i / (N - 1));
-    const isErr = i === ERR;
-    const missingP = isErr ? (f < ERR_AT - 30 ? 1 : 1 - fixP) : 0;
-    const topW = isErr ? lerp(0.66, 1, fixP) : 1;
-    const endCheck = (i === 0 || i === N - 1) && f >= 40 ? prog(f, 40 + (i ? 4 : 0), 12) : 0;
-    const passCheck = passed && !(isErr && f < FIX_AT + 8) ? prog(f, Math.max(60, f - 6), 6) : 0;
-    return {wx, appear, skew, isErr, missingP, topW, check: Math.max(endCheck, i === 0 || i === N - 1 ? 0 : passCheck)};
+  const overview = shotTrack(f, BASE, [
+    [0, {}],
+    [10, {tx: X(0), ty: 0.55, dist: 5.5, yaw: 62, pitch: 9, roll: -3}, EASE.out],
+    [36, {tx: X(3), ty: 0.3, dist: 30, yaw: 64, pitch: 20, roll: 0}, EASE.inOut],
+  ]);
+  const chase = shotTrack(f, {...BASE, tx: X(0), ty: 0.55, dist: 15, yaw: 46, pitch: 13, roll: 0}, [
+    [GATE.err - 4, {}],
+    [GATE.err + 8, {dist: 10.5, yaw: 36, pitch: 10, roll: -2}, EASE.out],
+    [GATE.resume - 2, {dist: 10.5, yaw: 30}],
+    [GATE.resume + 10, {dist: 15, yaw: 48, pitch: 13, roll: 0}, EASE.inOut],
+    [FLY, {dist: 12, yaw: 66, pitch: 8}],
+  ]);
+  chase.tx = gx - 1.4;
+  const shot: Shot = {...overview};
+  (Object.keys(shot) as (keyof Shot)[]).forEach((k) => {
+    shot[k] = lerp(overview[k], chase[k], follow);
   });
 
-  const ticks: React.ReactNode[] = [];
-  for (let wx = -STEP / 2; wx <= (N - 1) * STEP + STEP / 2; wx += STEP / 8) {
-    const major = Math.abs(((wx % STEP) + STEP) % STEP) < 1;
-    ticks.push(<line key={wx} x1={wx} y1={8} x2={wx} y2={major ? 30 : 18} />);
-  }
+  const appear = (i: number) => (i === 0 ? prog(f, 0, 10, EASE.overshoot) : prog(f, 12 + i * 3, 10, EASE.overshoot));
+  const errReveal = prog(f, GATE.err + 2, 10, EASE.out);
+  const fix = prog(f, GATE.err + 16, 12, EASE.inOut);
+  const passed = (i: number) => f >= 40 && gx <= X(i) + 0.1;
+  const out = prog(f, OUT, 12, EASE.in);
 
-  const trackW = prog(f, 8, 36, EASE.inOut);
-  const phOn = prog(f, 56, 10, EASE.out);
-  const phX = toX(ph);
-
-  // hand-off: indicator stretches & turns into the final highlight band
-  const m = prog(f, OUT + 4, END - OUT - 4, EASE.inOut);
-  const hb = {
-    cx: lerp(phX, 540, m),
-    cy: lerp(TRACK - PH_H / 2, HANDOFF.s6KeyLineY, m),
-    w: lerp(PH_H, VIDEO.width + 120, m),
-    h: lerp(26, HANDOFF.bandH, m),
-    rot: lerp(90, 0, m),
-  };
+  // the gate turns flat and flies into the lens
+  const fly = prog(f, FLY, END - FLY, EASE.in);
 
   return (
     <AbsoluteFill>
-      <Svg>
-        <HatchDefs id="s5hatch" spacing={8} width={1.8} />
-        <g opacity={1 - out}>
-          {/* reviewed portion of the sequence */}
-          <rect x={Math.min(toX(0), phX)} y={TRACK - 7} width={Math.max(0, phX - toX(0)) * phOn} height={14} fill={COLORS.highlight} />
-          <line
-            x1={lerp(-80, toX(-STEP / 2), trackW)}
-            y1={TRACK}
-            x2={Math.max(toX((N - 1) * STEP + STEP / 2), lerp(VIDEO.width + 80, toX((N - 1) * STEP + STEP / 2), trackW))}
-            y2={TRACK}
-            stroke={COLORS.ink}
-            strokeWidth={4}
-          />
-          <g transform={`translate(${toX(0)} ${TRACK}) scale(${s})`}>
-            <g stroke={COLORS.ink} strokeWidth={2} vectorEffect="non-scaling-stroke" opacity={trackW}>
-              {ticks}
-            </g>
-            {/* transitions between states */}
-            {nodes.slice(0, -1).map((n, i) => (
-              <path
-                key={i}
-                d={`M ${n.wx + 40} 44 Q ${n.wx + STEP / 2} ${i === ERR - 1 || i === ERR ? 96 : 84} ${n.wx + STEP - 40} 44`}
-                fill="none"
-                stroke={COLORS.ink}
-                strokeWidth={i === ERR - 1 && f >= ERR_AT && f < FIX_AT + 10 ? 3.5 : 2}
-                strokeDasharray={i === ERR - 1 && f < FIX_AT + 10 ? '6 6' : undefined}
-                vectorEffect="non-scaling-stroke"
-                opacity={nodes[i + 1].appear}
-              />
+      <Stage
+        shot={shot}
+        lightCenter={[X(3), 0.5, Z]}
+        hud={
+          <>
+            <Line3D text={COPY.s5.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="flip" outAt={OUT} outMode="flyOut" />
+            <Line3D
+              text={COPY.s5.line2}
+              x={TEXT_RIGHT}
+              y={L2.y}
+              size={L2.size}
+              inAt={GATE.err}
+              inDur={14}
+              stagger={3}
+              mode="slam"
+              hl={{at: GATE.err + 10, dur: 10, outAt: OUT + 2, outDur: 8}}
+              outAt={OUT + 2}
+              outMode="flyOut"
+            />
+            {COPY.s5.support.map((t, i) => (
+              <Line3D key={i} text={t} x={TEXT_RIGHT} y={SUP.y + i * 62} size={SUP.size} weight={500} depth={6} inAt={38 + i * 6} stagger={2} mode="rise" outAt={OUT - 4} outMode="flipOut" />
             ))}
-            {nodes.map((n, i) => (
-              <g key={i} opacity={n.appear} transform={`translate(0 ${(1 - n.appear) * 30})`}>
-                <Massing
-                  cx={n.wx}
-                  baseY={-16}
-                  params={NODE}
-                  skew={n.skew}
-                  missing={[2, 3, 4]}
-                  missingP={n.missingP}
-                  widthMul={(k) => (k === 4 ? n.topW : 1)}
-                />
-                {n.isErr && errP > 0 && f < FIX_AT + 18 ? (
-                  <g opacity={errP * (1 - prog(f, FIX_AT + 6, 10))} transform={`translate(${n.wx} -16) skewX(${n.skew}) translate(${-n.wx} 16)`}>
-                    {[2, 3, 4].map((k) =>
-                      [-0.33, -0.11, 0.11, 0.33].map((q, j) => (
-                        <rect
-                          key={`${k}-${j}`}
-                          x={n.wx + q * NODE.barW - 6}
-                          y={-16 - (k + 1) * NODE.barH - k * NODE.gap + NODE.barH / 2 - 6}
-                          width={12}
-                          height={12}
-                          fill="none"
-                          stroke={COLORS.highlight}
-                          strokeWidth={1.6}
-                          strokeDasharray="3 2"
-                        />
-                      )),
-                    )}
-                    <rect
-                      x={n.wx - NODE.barW / 2 - 10}
-                      y={-16 - NODE_H - 10}
-                      width={NODE.barW + 20}
-                      height={NODE_H + 20}
-                      fill="none"
-                      stroke={COLORS.ink}
-                      strokeWidth={2.5}
-                      strokeDasharray="7 5"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    <rect
-                      x={n.wx + (NODE.barW * n.topW) / 2}
-                      y={-16 - NODE_H}
-                      width={(NODE.barW * (1 - n.topW)) / 2}
-                      height={NODE.barH}
-                      fill="url(#s5hatch)"
-                      stroke={COLORS.ink}
-                      strokeWidth={1.5}
-                    />
-                    <rect
-                      x={n.wx - NODE.barW / 2}
-                      y={-16 - NODE_H}
-                      width={(NODE.barW * (1 - n.topW)) / 2}
-                      height={NODE.barH}
-                      fill="url(#s5hatch)"
-                      stroke={COLORS.ink}
-                      strokeWidth={1.5}
-                    />
-                  </g>
-                ) : null}
-                <CheckBadge x={n.wx + NODE.barW / 2 + 18} y={-16 - NODE_H - 20} r={16} p={n.isErr ? prog(f, FIX_AT + 10, 10) : n.check} />
-              </g>
-            ))}
-          </g>
-        </g>
-
-        {/* error ring pulse on the faulty transition */}
-        {errP > 0 && f < FIX_AT + 6 ? (
-          <circle
-            cx={toX(ERR * STEP)}
-            cy={TRACK - (NODE_H / 2 + 16) * s}
-            r={(NODE_H * 0.8 + 30 * Math.sin(errP * Math.PI)) * s}
-            fill="none"
-            stroke={COLORS.ink}
-            strokeWidth={3}
-            opacity={(1 - errP) * 0.9}
-          />
+          </>
+        }
+      >
+        {/* reviewed part of the rail glows */}
+        <Beam length={80} position={[-20, 0, Z]} width={0.34} core={1 - out} />
+        {follow > 0 ? (
+          <mesh position={[(X(0) + 1.6 + gx) / 2, 0.06, Z]} scale={[Math.max(0.001, X(0) + 1.6 - gx), 1, 1]}>
+            <boxGeometry args={[1, 0.03, 0.6]} />
+            <meshBasicMaterial color={COLORS.highlight} />
+          </mesh>
         ) : null}
-      </Svg>
 
-      {/* the review indicator */}
-      {phOn > 0 && f < OUT + 4 ? (
-        <>
-          <Band left={phX - 13} top={TRACK - PH_H * phOn} width={26} height={PH_H * phOn} core={1} coreVertical radius={5} />
-          <div
-            style={{
-              position: 'absolute',
-              left: phX - 13,
-              top: TRACK - PH_H * phOn - 13,
-              width: 26,
-              height: 26,
-              background: COLORS.ink,
-              transform: 'rotate(45deg)',
-              borderRadius: 3,
-            }}
-          />
-        </>
+        {Array.from({length: N}, (_, i) => {
+          const isErr = i === ERR;
+          const a = appear(i) * (1 - out);
+          if (a <= 0.001) return null;
+          const yaw = -40 + i * 13;
+          return (
+            <group key={i}>
+              <Massing3D
+                params={APPROVED_3D}
+                position={[X(i), 0.04, Z]}
+                rotationY={yaw}
+                scale={SCALE * a}
+                floorFx={(k) => ({
+                  openings: isErr && k >= 2 ? (f < GATE.err - 30 ? 0 : fix) : 1,
+                  widthMul: isErr && k === 4 ? lerp(0.68, 1, fix) : 1,
+                })}
+              />
+              {i < N - 1 ? (
+                <mesh position={[(X(i) + X(i + 1)) / 2, 0.15, Z]} rotation={[0, 0, 0]} scale={a}>
+                  <torusGeometry args={[1.25, 0.035, 8, 40, Math.PI]} />
+                  <meshStandardMaterial color={i === ERR - 1 && fix < 1 ? COLORS.ink : '#9DB4DE'} />
+                </mesh>
+              ) : null}
+              <Check3D
+                p={isErr ? prog(f, GATE.err + 26, 10) : (i === 0 || i === N - 1) && f > 34 && f < 44 ? prog(f, 34, 8) : passed(i) ? 1 : 0}
+                position={[X(i), height3D(APPROVED_3D) * SCALE + 0.55, Z]}
+                size={0.28}
+                yaw={55}
+              />
+            </group>
+          );
+        })}
+
+        {/* error reveal on the faulty in-between state */}
+        {errReveal > 0 && fix < 1 ? (
+          <group>
+            <EnvelopeBox w={APPROVED_3D.w * SCALE + 0.3} h={height3D(APPROVED_3D) * SCALE + 0.2} d={APPROVED_3D.d * SCALE + 0.3} position={[X(ERR), 0, Z]} opacity={errReveal * (1 - fix)} dashed />
+            <mesh position={[X(ERR), 0.05, Z]} rotation={[-Math.PI / 2, 0, 0]} scale={1 + Math.sin(errReveal * Math.PI) * 0.5}>
+              <torusGeometry args={[1.0, 0.04, 8, 48]} />
+              <meshBasicMaterial color={COLORS.ink} transparent opacity={(1 - errReveal) * 0.9 + 0.1} />
+            </mesh>
+          </group>
+        ) : null}
+
+        {/* the review gate */}
+        {follow > 0 ? (
+          <group
+            position={[gx + fly * 3, 0.95 + fly * 0.6, Z + fly * 3.5]}
+            rotation={[0, THREE.MathUtils.degToRad(fly * 30), THREE.MathUtils.degToRad(fly * 90)]}
+            scale={[1, clamp01(follow * 1.4) * (1 + fly * 2.5), 1 + fly * 2.5]}
+          >
+            <mesh>
+              <boxGeometry args={[0.07, 1.9, 1.3]} />
+              <meshStandardMaterial color={COLORS.highlight} emissive={COLORS.highlight} emissiveIntensity={0.6} transparent opacity={0.6} depthWrite={false} />
+            </mesh>
+            <mesh position={[0.045, 0, 0]}>
+              <boxGeometry args={[0.02, 1.9, 0.08]} />
+              <meshBasicMaterial color={COLORS.ink} />
+            </mesh>
+            <mesh position={[0, 1.1, 0]} rotation={[0, 0, Math.PI / 4]}>
+              <boxGeometry args={[0.22, 0.22, 0.22]} />
+              <meshStandardMaterial color={COLORS.ink} />
+            </mesh>
+          </group>
+        ) : null}
+      </Stage>
+
+      {fly > 0.6 ? <Panel left={-40} top={-40} width={1160} height={2000} radius={0} /> : null}
+      {fly > 0.35 && fly <= 0.6 ? (
+        <div style={{position: 'absolute', inset: 0, background: COLORS.highlight, opacity: (fly - 0.35) / 0.25}} />
       ) : null}
-      {/* incoming tick from Scene 04 grows into the indicator */}
-      {f < 56 ? <Band left={540 - 11} top={TRACK - 130 * (1 - prog(f, 30, 16, EASE.in))} width={22} height={130 * (1 - prog(f, 30, 16, EASE.in))} core={1} coreVertical radius={4} /> : null}
-      {f >= OUT + 4 ? (
-        <Band left={hb.cx - hb.w / 2} top={hb.cy - hb.h / 2} width={hb.w} height={hb.h} rotate={hb.rot} core={1} radius={8} />
-      ) : null}
 
-      <ArLine text={COPY.s5.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={14} stagger={4} mode="rise" outAt={OUT} outMode="rise" />
-      {COPY.s5.support.map((t, i) => (
-        <ArLine key={i} text={t} x={TEXT_RIGHT} y={SUP.y + i * 68} size={SUP.size} weight={500} inAt={64 + i * 10} inDur={18} mode="wipe" outAt={OUT - 2 + i * 2} outMode="fade" />
-      ))}
-      <ArLine
-        text={COPY.s5.line2}
-        x={TEXT_RIGHT}
-        y={L2.y}
-        size={L2.size}
-        inAt={106}
-        inDur={16}
-        stagger={4}
-        mode="rise"
-        hl={{at: 114, dur: 12, outAt: OUT + 2, outDur: 10}}
-        outAt={OUT + 2}
-        outMode="rise"
-      />
-
-      <Sfx at={2} name="pop" volume={0.6} />
-      <Sfx at={40} name="tick" />
-      <Sfx at={44} name="tick" rate={1.15} />
-      <Sfx at={60} name="click" volume={0.6} />
-      {[1, 2, 3].map((i) => (
-        <Sfx key={i} at={60 + i * 10} name="click" volume={0.5} rate={1 + i * 0.05} />
-      ))}
-      <Sfx at={ERR_AT} name="thud" volume={0.8} />
-      <Sfx at={ERR_AT + 4} name="error" />
-      <Sfx at={FIX_AT} name="align" />
-      <Sfx at={FIX_AT + 10} name="resolve" volume={0.6} />
-      <Sfx at={RESUME} name="click" volume={0.6} rate={1.2} />
-      <Sfx at={114} name="sweep" volume={0.6} />
-      <Sfx at={OUT + 4} name="swoosh" volume={0.5} />
+      <Sfx at={0} name="pop" volume={0.5} />
+      <Sfx at={12} name="whoosh" volume={0.45} />
+      <Sfx at={34} name="tick" />
+      <Sfx at={38} name="tick" rate={1.15} />
+      <Sfx at={GATE.start} name="sweep" volume={0.5} />
+      <Sfx at={GATE.err} name="thud" volume={0.8} />
+      <Sfx at={GATE.err + 2} name="error" volume={0.8} />
+      <Sfx at={GATE.err + 10} name="slam" volume={0.5} />
+      <Sfx at={GATE.err + 16} name="align" />
+      <Sfx at={GATE.err + 26} name="resolve" volume={0.45} />
+      <Sfx at={GATE.resume} name="sweep" volume={0.5} />
+      <Sfx at={FLY} name="riser" volume={0.6} />
     </AbsoluteFill>
   );
 };

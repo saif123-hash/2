@@ -12,8 +12,8 @@ import {EASE, prog, tween} from '../lib/motion';
 export const Chrome: React.FC = () => {
   const frame = useCurrentFrame();
   const last = SCENE_ORDER[SCENE_ORDER.length - 1];
-  const fadeOut = 1 - prog(frame, SCENE_START[last] + 138, 16, EASE.inOut);
-  const intro = prog(frame, 4, 20, EASE.out);
+  const fadeOut = 1 - prog(frame, SCENE_START[last] + 112, 12, EASE.inOut);
+  const intro = prog(frame, 2, 12, EASE.out);
   const op = intro * fadeOut;
   if (op <= 0) return null;
 
