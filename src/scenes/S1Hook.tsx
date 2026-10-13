@@ -7,7 +7,7 @@ import {EASE, prog, shake, tween} from '../lib/motion';
 import {Panel, Sfx} from '../overlay/Overlays';
 import {Burst} from '../three/Burst';
 import {Digit3D} from '../three/Digit3D';
-import {Massing3D, Params3D, Slab, floorY} from '../three/Massing3D';
+import {Floor3D, Massing3D, Params3D, floorY} from '../three/Massing3D';
 import {Stage} from '../three/Stage';
 import {Line3D, lineLayout} from '../three/Text3D';
 import {Shot, shotTrack} from '../three/shot';
@@ -17,9 +17,9 @@ import {Shot, shotTrack} from '../three/shot';
 // uninvited slab slams on top (debris, camera jolt) → the digit flips to
 // reveal 6 → the highlight behind the question floods the frame.
 
-const STACK: Params3D = {floors: 5, w: 2.6, h: 0.46, d: 2.0, gap: 0.2, pattern: 0};
+const STACK: Params3D = {floors: 5, w: 2.6, h: 0.56, d: 2.0, gap: 0.1, pattern: 0};
 const STACK_POS: [number, number, number] = [0.95, 0, -0.9];
-const DIGIT_POS: [number, number, number] = [-1.2, 0, 1.0];
+const DIGIT_POS: [number, number, number] = [-1.45, 0, 1.2];
 const LAND = [20, 26, 32, 38, 44];
 const SIX = {from: 62, land: 72};
 const FLIP = {at: 76, dur: 16};
@@ -37,12 +37,12 @@ export const S1Hook: React.FC = () => {
 
   const shot = shotTrack(f, BASE, [
     [0, {}],
-    [36, {tx: -0.55, ty: 0.15, tz: 0, dist: 19.5, yaw: 26, pitch: 9, roll: 0, fov: 30}, EASE.inOut],
-    [64, {yaw: 34, dist: 18.8}, EASE.smooth],
-    [72, {dist: 18.2}, EASE.in],
-    [100, {tx: -0.95, ty: 0.35, tz: 0.3, dist: 15.5, yaw: 12, pitch: 5, roll: 2.5, fov: 31}, EASE.out],
-    [136, {yaw: 4, dist: 15, roll: 0}, EASE.smooth],
-    [END, {dist: 12, pitch: 2}, EASE.in],
+    [36, {tx: -0.1, ty: 0.15, tz: 0, dist: 22, yaw: 44, pitch: 9, roll: 0, fov: 30}, EASE.inOut],
+    [64, {yaw: 52, dist: 21.5}, EASE.smooth],
+    [72, {dist: 21}, EASE.in],
+    [100, {tx: -0.55, ty: 0.35, tz: 0.3, dist: 21.5, yaw: 34, pitch: 5, roll: 2.5, fov: 31}, EASE.out],
+    [136, {yaw: 26, dist: 21, roll: 0}, EASE.smooth],
+    [END, {dist: 16, pitch: 2}, EASE.in],
   ]);
   // impact jolt
   shot.tx += shake(f, SIX.land, 0.16, 14);
@@ -123,12 +123,12 @@ export const S1Hook: React.FC = () => {
           </group>
         </group>
 
-        <Massing3D params={STACK} position={STACK_POS} floorFx={floorFx} />
+        <Massing3D params={STACK} position={STACK_POS} floorFx={floorFx} roof={false} />
 
         {/* the uninvited sixth slab */}
         {sixFall > 0 && sixOut < 1 ? (
           <group position={[STACK_POS[0], sixY - sixOut * 6, STACK_POS[2]]} scale={[1, 1 - squashAll * 1.4, 1]}>
-            <Slab w={STACK.w} h={STACK.h} d={STACK.d} look="hatch" />
+            <Floor3D p={STACK} index={5} look="hatch" />
           </group>
         ) : null}
         <Burst t={(f - SIX.land) / 30} origin={[STACK_POS[0], floorY(STACK, 5), STACK_POS[2]]} count={30} power={1.1} />

@@ -7,7 +7,7 @@ import {EASE, clamp01, lerp, prog, shake} from '../lib/motion';
 import {Sfx, Streaks} from '../overlay/Overlays';
 import {Beam, Check3D, EnvelopeBox, toScreen} from '../three/Helpers';
 import {HudRect} from '../three/Hud';
-import {APPROVED_3D, Massing3D, Slab, floorY, height3D} from '../three/Massing3D';
+import {APPROVED_3D, Massing3D, Slab, floorY, height3D, storey} from '../three/Massing3D';
 import {Stage} from '../three/Stage';
 import {Line3D} from '../three/Text3D';
 import {Shot, shotTrack, solveShot} from '../three/shot';
@@ -20,6 +20,8 @@ import {Shot, shotTrack, solveShot} from '../three/shot';
 
 const P = APPROVED_3D;
 const H = height3D(P);
+const FH = storey(P);
+const plateY = (i: number) => floorY(P, i) - FH / 2 + P.gap / 2;
 const MAT = 22;
 const FIN = 38;
 const SITE = 54;
@@ -41,7 +43,7 @@ export const S4Enhance: React.FC = () => {
     [0, {}],
     [18, {tx: 0.4, ty: 0.3, tz: 0, dist: 20.5, yaw: -22, pitch: 9, roll: 0}, EASE.out],
     [INVENT, {yaw: 16, dist: 20}, EASE.smooth],
-    [EXPOSE + 6, {tx: 1.6, ty: 0.5, dist: 17.5, yaw: 24, pitch: 10}, EASE.inOut],
+    [EXPOSE + 6, {tx: 1.0, ty: 0.5, dist: 19.5, yaw: 24, pitch: 10}, EASE.inOut],
     [RESTORE + 6, {tx: 0.6, ty: 0.3, dist: 20, yaw: 30, pitch: 9}, EASE.inOut],
     [END, {tx: 0, ty: 0.2, tz: 2, dist: 9, yaw: 90, pitch: 4, roll: 0}, EASE.inOut],
   ]);
@@ -74,8 +76,8 @@ export const S4Enhance: React.FC = () => {
 
   // label pins
   const pin = (p: [number, number, number]) => toScreen(shot, p);
-  const pMat = pin([-0.4, floorY(P, 3), P.d / 2]);
-  const pFin = pin([P.w / 2, floorY(P, 4) + P.h / 2, P.d / 2]);
+  const pMat = pin([P.w / 2 + 0.05, floorY(P, 3), 0.2]);
+  const pFin = pin([-P.w / 2, plateY(4), P.d / 2]);
   const pSite = pin([2.7, 1.3, -1.4]);
   const labOut = 1 - prog(f, EXPOSE - 4, 8, EASE.in);
   const labels: [string, [number, number, number], number][] = [
@@ -134,11 +136,11 @@ export const S4Enhance: React.FC = () => {
         {fins > 0.01
           ? Array.from({length: 5}, (_, i) =>
               Array.from({length: 13}, (_, k) => {
-                const x = -P.w / 2 + 0.12 + k * ((P.w - 0.24) / 12);
+                const z = -P.d / 2 + 0.12 + k * ((P.d - 0.24) / 12);
                 const local = clamp01(fins * 1.6 - k / 13);
                 return local > 0.01 ? (
-                  <mesh key={`${i}-${k}`} position={[x, floorY(P, i), P.d / 2 + 0.05]} scale={[1, local, 1]}>
-                    <boxGeometry args={[0.035, P.h * 0.86, 0.06]} />
+                  <mesh key={`${i}-${k}`} position={[P.w / 2 + 0.05, floorY(P, i) + P.gap / 2, z]} scale={[1, local, 1]} castShadow>
+                    <boxGeometry args={[0.07, P.h * 0.96, 0.035]} />
                     <meshStandardMaterial color="#2C4A6B" roughness={0.3} metalness={0.3} />
                   </mesh>
                 ) : null;
@@ -148,13 +150,13 @@ export const S4Enhance: React.FC = () => {
         {/* finishes: glowing trims along every slab edge */}
         {trim > 0.01
           ? Array.from({length: 5}, (_, i) => (
-              <group key={i} position={[0, floorY(P, i) + P.h / 2 + 0.012, 0]}>
-                <mesh position={[0, 0, P.d / 2 + 0.01]} scale={[trim, 1, 1]}>
-                  <boxGeometry args={[P.w + 0.02, 0.04, 0.05]} />
+              <group key={i} position={[0, plateY(i) + P.gap / 2 + 0.012, 0]}>
+                <mesh position={[0, 0, P.d / 2 + 0.06]} scale={[trim, 1, 1]}>
+                  <boxGeometry args={[P.w + 0.12, 0.04, 0.05]} />
                   <meshBasicMaterial color={COLORS.highlight} />
                 </mesh>
-                <mesh position={[P.w / 2 + 0.01, 0, 0]} scale={[1, 1, trim]}>
-                  <boxGeometry args={[0.05, 0.04, P.d + 0.02]} />
+                <mesh position={[P.w / 2 + 0.06, 0, 0]} scale={[1, 1, trim]}>
+                  <boxGeometry args={[0.05, 0.04, P.d + 0.12]} />
                   <meshBasicMaterial color={COLORS.highlight} />
                 </mesh>
               </group>
@@ -190,15 +192,24 @@ export const S4Enhance: React.FC = () => {
         {/* the invented cantilever */}
         {cantP > 0 && fallT < 1.2 ? (
           <group
-            position={[P.w / 2 + (CANT.len * cantP) / 2 - 0.1 + fallT * 1.5, floorY(P, CANT.floor) - 4.9 * fallT * fallT * (knocked ? 1 : 0), 0]}
+            position={[P.w / 2 + (CANT.len * cantP) / 2 + 0.05 + fallT * 1.5, plateY(CANT.floor) - 4.9 * fallT * fallT * (knocked ? 1 : 0), 0.2]}
             rotation={[0, 0, knocked ? -fallT * 2.4 : 0]}
           >
             <group scale={[cantP, 1, 1]}>
-              <Slab w={CANT.len} h={P.h * 0.8} d={P.d * 0.8} look="hatch" />
+              {/* an oversized balcony that is not in the approved design */}
+              <Slab w={CANT.len} h={0.14} d={P.d * 0.85} look="hatch" />
+              <mesh position={[0, 0.2, P.d * 0.42]}>
+                <boxGeometry args={[CANT.len, 0.32, 0.03]} />
+                <meshStandardMaterial color={COLORS.highlight} transparent opacity={0.6} />
+              </mesh>
+              <mesh position={[CANT.len / 2, 0.2, 0]}>
+                <boxGeometry args={[0.03, 0.32, P.d * 0.85]} />
+                <meshStandardMaterial color={COLORS.highlight} transparent opacity={0.6} />
+              </mesh>
             </group>
             {/* cross */}
             {expose > 0 ? (
-              <group position={[0, 0, P.d * 0.4 + 0.15]} scale={expose}>
+              <group position={[0, 0.3, P.d * 0.43 + 0.12]} scale={expose}>
                 <mesh rotation={[0, 0, Math.PI / 4]}>
                   <boxGeometry args={[0.16, 1.5, 0.1]} />
                   <meshStandardMaterial color={COLORS.ink} />
