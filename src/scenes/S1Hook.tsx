@@ -147,12 +147,10 @@ export const S1Hook: React.FC = () => {
       {LAND.map((l, i) => (
         <Sfx key={i} at={l} name="thud" rate={1 + i * 0.06} volume={0.8} />
       ))}
-      <Sfx at={0} name="whoosh" volume={0.5} />
       <Sfx at={SIX.from} name="riser" volume={0.6} />
       <Sfx at={SIX.land} name="impact" volume={0.6} />
       <Sfx at={FLIP.at} name="swoosh" volume={0.6} />
       <Sfx at={88} name="sweep" volume={0.7} />
-      <Sfx at={OUT} name="whoosh" volume={0.5} />
       <Sfx at={WIPE} name="slam" volume={0.6} />
     </AbsoluteFill>
   );

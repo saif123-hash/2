@@ -170,15 +170,8 @@ export const S6Brand: React.FC = () => {
         </div>
       ) : null}
 
-      {[0, 1, 2, 3, 4].map((i) => (
-        <Sfx key={i} at={4 + i * 3 + 8} name="tick" volume={0.45} rate={1.2 + i * 0.04} />
-      ))}
-      <Sfx at={10} name="swoosh" volume={0.5} />
       <Sfx at={L2_AT + 6} name="slam" volume={0.65} />
       <Sfx at={L2_AT + 8} name="sweep" volume={0.6} />
-      <Sfx at={24} name="click" />
-      <Sfx at={48} name="click" rate={1.1} />
-      <Sfx at={72} name="click" rate={1.2} />
       <Sfx at={EXIT} name="whoosh" volume={0.45} />
       <Sfx at={LOGO_AT} name="resolve" />
     </AbsoluteFill>

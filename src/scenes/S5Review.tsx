@@ -178,17 +178,10 @@ export const S5Review: React.FC = () => {
         <div style={{position: 'absolute', inset: 0, background: COLORS.highlight, opacity: (fly - 0.35) / 0.25}} />
       ) : null}
 
-      <Sfx at={0} name="pop" volume={0.5} />
       <Sfx at={12} name="whoosh" volume={0.45} />
-      <Sfx at={34} name="tick" />
-      <Sfx at={38} name="tick" rate={1.15} />
       <Sfx at={GATE.start} name="sweep" volume={0.5} />
-      <Sfx at={GATE.err} name="thud" volume={0.8} />
       <Sfx at={GATE.err + 2} name="error" volume={0.8} />
-      <Sfx at={GATE.err + 10} name="slam" volume={0.5} />
       <Sfx at={GATE.err + 16} name="align" />
-      <Sfx at={GATE.err + 26} name="resolve" volume={0.45} />
-      <Sfx at={GATE.resume} name="sweep" volume={0.5} />
       <Sfx at={FLY} name="riser" volume={0.6} />
     </AbsoluteFill>
   );

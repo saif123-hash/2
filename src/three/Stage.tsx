@@ -71,7 +71,7 @@ export const Stage: React.FC<StageProps> = ({
   children,
   hud,
   fog = [26, 60],
-  grid = 0.07,
+  grid = 0.035,
   gridSize = 1,
   floorShadow = 0.2,
   lightCenter = [0, 0, 0],

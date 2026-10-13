@@ -99,7 +99,7 @@ def saw(t, f):
 def sfx():
     out = {}
     t = tt(0.12)
-    out['tick'] = norm((np.sin(2 * np.pi * 2300 * t) * 0.6 + fft_filter(rng.normal(0, 1, len(t)), lo=3000) * 0.4) * env_ad(len(t), 0.001, 0.018), 0.55)
+    out['tick'] = norm(fft_filter(np.sin(2 * np.pi * 1350 * t) * 0.8 + fft_filter(rng.normal(0, 1, len(t)), lo=1500) * 0.2, hi=4000) * env_ad(len(t), 0.001, 0.014), 0.45)
     t = tt(0.1)
     out['click'] = norm((np.sin(2 * np.pi * 1250 * t) * 0.5 + fft_filter(rng.normal(0, 1, len(t)), lo=1500, hi=7000) * 0.5) * env_ad(len(t), 0.0005, 0.012), 0.5)
     t = tt(1.4)
@@ -112,15 +112,15 @@ def sfx():
     out['thud'] = norm(np.tanh(1.4 * np.sin(2 * np.pi * np.cumsum(f) / SR)) * env_ad(len(t), 0.002, 0.13), 0.8)
     n = rng.normal(0, 1, int(0.55 * SR))
     e = np.sin(np.linspace(0, np.pi, len(n))) ** 2
-    out['swoosh'] = norm(sweep_filter(n, 500, 4200, 2.2) * e, 0.45)
+    out['swoosh'] = norm(sweep_filter(n, 400, 2600, 1.8) * e, 0.32)
     n = rng.normal(0, 1, int(0.9 * SR))
     e = np.sin(np.linspace(0, np.pi, len(n))) ** 1.5
-    out['whoosh'] = norm(sweep_filter(n, 2600, 260, 1.8) * e, 0.4)
+    out['whoosh'] = norm(sweep_filter(n, 1800, 220, 1.6) * e, 0.34)
     t = tt(0.42)
     n = rng.normal(0, 1, len(t))
     e = np.minimum(1, t / 0.28) * np.exp(-np.maximum(0, t - 0.28) / 0.04)
     glide = np.sin(2 * np.pi * np.cumsum(700 + 900 * t / 0.42) / SR) * 0.18
-    out['sweep'] = norm((sweep_filter(n, 900, 6500, 3.0) * 0.8 + glide) * e, 0.42)
+    out['sweep'] = norm((sweep_filter(n, 600, 3200, 2.2) * 0.7 + glide * 0.6) * e, 0.32)
     t = tt(0.9)
     chime = (np.sin(2 * np.pi * 1318.5 * t) + 0.6 * np.sin(2 * np.pi * 1975.5 * t) + 0.3 * np.sin(2 * np.pi * 2637 * t)) * env_ad(len(t), 0.002, 0.22)
     tk = np.zeros(len(t))
@@ -130,8 +130,10 @@ def sfx():
         tk[i: i + len(k)] += k
     out['align'] = norm(reverb(tk * 0.8 + chime * 0.35, 1.0, 0.25), 0.55)
     t = tt(0.45)
-    sq = np.sign(np.sin(2 * np.pi * 196 * t)) + np.sign(np.sin(2 * np.pi * 207.6 * t))
-    out['error'] = norm(fft_filter(sq, hi=900) * env_ad(len(t), 0.004, 0.11), 0.45)
+    # soft two-note "not quite": a descending sine pair, no buzz
+    half = len(t) // 2
+    tone = np.concatenate([np.sin(2 * np.pi * 523 * t[:half]) * env_ad(half, 0.004, 0.08), np.sin(2 * np.pi * 392 * t[: len(t) - half]) * env_ad(len(t) - half, 0.004, 0.12)])
+    out['error'] = norm(reverb(tone, 0.8, 0.25), 0.4)
     t = tt(0.16)
     f = 300 + 520 * np.exp(-t * 40)
     out['pop'] = norm(np.sin(2 * np.pi * np.cumsum(f) / SR) * env_ad(len(t), 0.001, 0.045), 0.5)
@@ -144,7 +146,7 @@ def sfx():
     n = rng.normal(0, 1, len(t))
     e = (t / t[-1]) ** 2.2 * np.minimum(1, (t[-1] - t) / 0.03 + 0.0)
     tone = np.sin(2 * np.pi * np.cumsum(220 + 900 * (t / t[-1]) ** 2) / SR) * 0.25
-    out['riser'] = norm((sweep_filter(n, 300, 7000, 2.5) * 0.8 + tone) * e, 0.45)
+    out['riser'] = norm((sweep_filter(n, 300, 4000, 2.2) * 0.6 + tone) * e, 0.32)
     t = tt(0.6)
     f = 52 + 140 * np.exp(-t * 26)
     body = np.tanh(2.2 * np.sin(2 * np.pi * np.cumsum(f) / SR)) * env_ad(len(t), 0.001, 0.14)
@@ -273,14 +275,14 @@ def music():
     riser_n = rng.normal(0, 1, int(beat * 2 * SR))
     rt = np.arange(len(riser_n)) / SR
     riser = sweep_filter(riser_n, 400, 6000, 2.0) * (rt / rt[-1]) ** 2.5
-    riser = norm(riser, 0.22)
+    riser = norm(fft_filter(riser, hi=5000), 0.11)
     for c in cuts:
         add(fx, riser, c - beat * 2)
-        add(fx, crash * 0.22, c)
+        add(fx, fft_filter(crash, hi=9000) * 0.07, c)
         add(fx, sub * 0.5, c)
-    add(fx, crash * 0.3, t_drop)
+    add(fx, crash * 0.1, t_drop)
     add(fx, sub * 0.7, t_drop)
-    add(fx, crash * 0.25, t_slam6)
+    add(fx, crash * 0.08, t_slam6)
     add(fx, sub * 0.6, t_slam6)
 
     # final resolve: sustained Fmaj9 under the logo

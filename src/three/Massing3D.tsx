@@ -72,6 +72,8 @@ const makeMats = () => {
     open: new THREE.MeshStandardMaterial({color: COLORS.highlight, roughness: 0.25, emissive: new THREE.Color(COLORS.highlight), emissiveIntensity: 0.55}),
   };
 };
+export type MatOverride = Partial<Pick<ReturnType<typeof makeMats>, 'wall' | 'glass' | 'rail' | 'ink'>>;
+
 export const useSlabMaterials = () => {
   MATS = MATS ?? makeMats();
   return MATS;
@@ -84,8 +86,8 @@ const Box: React.FC<{p: [number, number, number]; s: [number, number, number]; m
 );
 
 /** Windows along one façade of length L, facing +z in local space. */
-const FacadeWindows: React.FC<{L: number; h: number; bays: number; strip: boolean; amount: number; skip?: number[]}> = ({L, h, bays, strip, amount, skip = []}) => {
-  const m = useSlabMaterials();
+const FacadeWindows: React.FC<{L: number; h: number; bays: number; strip: boolean; amount: number; skip?: number[]; mats?: MatOverride}> = ({L, h, bays, strip, amount, skip = [], mats}) => {
+  const m = {...useSlabMaterials(), ...mats};
   if (amount <= 0.01) return null;
   const bw = L / bays;
   const ww = bw * (strip ? 0.84 : 0.62);
@@ -111,8 +113,9 @@ export const Floor3D: React.FC<{
   openings?: number;
   widthMul?: number;
   balconies?: boolean;
-}> = ({p, index, look = 'ink', openings = 1, widthMul = 1}) => {
-  const m = useSlabMaterials();
+  mats?: MatOverride;
+}> = ({p, index, look = 'ink', openings = 1, widthMul = 1, mats}) => {
+  const m = {...useSlabMaterials(), ...mats};
   const w = p.w * widthMul;
   const {h, d, gap} = p;
   const FH = h + gap;
@@ -140,16 +143,16 @@ export const Floor3D: React.FC<{
       <Box p={[0, coreY, 0]} s={[w, h, d]} m={m.wall} />
       {/* windows on all four façades */}
       <group position={[0, coreY, d / 2]}>
-        <FacadeWindows L={w} h={h} bays={bays} strip={!approved} amount={openings} skip={ground && approved ? [1, 2] : ground ? [1] : []} />
+        <FacadeWindows L={w} h={h} bays={bays} strip={!approved} amount={openings} skip={ground && approved ? [1, 2] : ground ? [1] : []} mats={mats} />
       </group>
       <group position={[0, coreY, -d / 2]} rotation={[0, Math.PI, 0]}>
-        <FacadeWindows L={w} h={h} bays={bays} strip={!approved} amount={openings} />
+        <FacadeWindows L={w} h={h} bays={bays} strip={!approved} amount={openings} mats={mats} />
       </group>
       <group position={[w / 2, coreY, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <FacadeWindows L={d} h={h} bays={sideBays} strip={!approved} amount={openings} />
+        <FacadeWindows L={d} h={h} bays={sideBays} strip={!approved} amount={openings} mats={mats} />
       </group>
       <group position={[-w / 2, coreY, 0]} rotation={[0, -Math.PI / 2, 0]}>
-        <FacadeWindows L={d} h={h} bays={sideBays} strip={!approved} amount={openings} />
+        <FacadeWindows L={d} h={h} bays={sideBays} strip={!approved} amount={openings} mats={mats} />
       </group>
       {/* balconies: navy slab + glass railing, on the two outer front bays */}
       {balc
@@ -196,8 +199,9 @@ export const Massing3D: React.FC<{
   floorFx?: (i: number) => FloorFx;
   openings?: number;
   roof?: boolean;
-}> = ({params = APPROVED_3D, position = [0, 0, 0], rotationY = 0, scale = 1, floorFx, openings = 1, roof = true}) => {
-  const m = useSlabMaterials();
+  mats?: MatOverride;
+}> = ({params = APPROVED_3D, position = [0, 0, 0], rotationY = 0, scale = 1, floorFx, openings = 1, roof = true, mats}) => {
+  const m = {...useSlabMaterials(), ...mats};
   const n = Math.ceil(params.floors - 1e-6);
   const frac = params.floors - (n - 1);
   const topFx = floorFx ? floorFx(n - 1) : {};
@@ -216,7 +220,7 @@ export const Massing3D: React.FC<{
             rotation={[THREE.MathUtils.degToRad(fx.rx ?? 0), THREE.MathUtils.degToRad(fx.ry ?? 0), THREE.MathUtils.degToRad(fx.rz ?? 0)]}
             scale={[(fx.sx ?? 1) * xz(show), (fx.sy ?? 1) * show, (fx.sz ?? 1) * xz(show)]}
           >
-            <Floor3D p={params} index={i} look={fx.look} openings={(fx.openings ?? 1) * openings} widthMul={fx.widthMul ?? 1} />
+            <Floor3D p={params} index={i} look={fx.look} openings={(fx.openings ?? 1) * openings} widthMul={fx.widthMul ?? 1} mats={mats} />
           </group>
         );
       })}

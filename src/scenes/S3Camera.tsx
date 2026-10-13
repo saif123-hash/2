@@ -3,7 +3,7 @@ import {Line} from '@react-three/drei';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {COPY} from '../config/copy';
 import {COLORS, TEXT_RIGHT} from '../config/theme';
-import {EASE, clamp01, prog} from '../lib/motion';
+import {EASE, clamp01, lerp, prog} from '../lib/motion';
 import {Sfx, Streaks} from '../overlay/Overlays';
 import {toScreen} from '../three/Helpers';
 import {HudBrackets, HudRect} from '../three/Hud';
@@ -81,7 +81,7 @@ export const S3Camera: React.FC = () => {
       <Stage
         shot={shot}
         lightCenter={[C[0], 1.5, C[2]]}
-        grid={0.22}
+        grid={lerp(0.12, 0.04, prog(f, 8, 24))}
         hud={
           <>
             <Line3D text={COPY.s3.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={4} stagger={4} mode="spin" outAt={OUT} outMode="flyOut" />
@@ -152,16 +152,9 @@ export const S3Camera: React.FC = () => {
 
       <Streaks p={whip} angle={-8 + whip * 20} count={26} opacity={clamp01(whip * 3)} />
 
-      {[0, 1, 2, 3, 4].map((i) => (
-        <Sfx key={i} at={1 + i * 2.5} name="tick" volume={0.5} rate={1 + i * 0.06} />
-      ))}
       <Sfx at={10} name="swoosh" volume={0.5} />
-      <Sfx at={22} name="pop" volume={0.5} />
-      <Sfx at={28} name="pop" rate={1.2} volume={0.45} />
-      <Sfx at={34} name="pop" rate={1.4} volume={0.45} />
       <Sfx at={48} name="swoosh" volume={0.45} rate={1.1} />
       <Sfx at={LINE2_AT + 10} name="slam" volume={0.6} />
-      <Sfx at={86} name="swoosh" volume={0.4} rate={0.9} />
       <Sfx at={WHIP} name="whoosh" volume={0.7} />
     </AbsoluteFill>
   );

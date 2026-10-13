@@ -84,7 +84,7 @@ export const S2Reference: React.FC = () => {
       <Stage
         shot={shot}
         lightCenter={[0, 1, -2.5]}
-        grid={lerp(0.07, 0.22, sink)}
+        grid={lerp(0.035, 0.12, sink)}
         hud={
           <>
             <Line3D text={COPY.s2.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="swing" outAt={CRANE + 2} outMode="flyOut" />
@@ -138,15 +138,10 @@ export const S2Reference: React.FC = () => {
 
       {collapse < 1 ? <Panel left={-40} top={lerp(-40, datumScreenY - 6, collapse)} width={1160} height={lerp(2000, 12, collapse)} core={collapse} radius={0} /> : null}
 
-      {[0, 1, 2, 3, 4].map((i) => (
-        <Sfx key={i} at={8 + i * 3} name="tick" rate={0.9 + i * 0.06} volume={0.6} />
-      ))}
-      <Sfx at={24} name="pop" volume={0.6} />
       <Sfx at={40} name="sweep" volume={0.6} />
       {BEATS.map((b, i) => (
         <Sfx key={`b${i}`} at={b} name="click" rate={1 + i * 0.08} />
       ))}
-      <Sfx at={BEATS[0] + 10} name="error" volume={0.45} />
       <Sfx at={FIX.at} name="align" />
       <Sfx at={CRANE} name="whoosh" volume={0.5} />
     </AbsoluteFill>

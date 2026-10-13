@@ -64,10 +64,27 @@ export const Streaks: React.FC<{p: number; angle?: number; count?: number; seed?
 
 export type SfxName = 'tick' | 'click' | 'impact' | 'swoosh' | 'sweep' | 'align' | 'error' | 'pop' | 'resolve' | 'whoosh' | 'thud' | 'riser' | 'slam';
 
+// Per-sound trims so accents stay under the music instead of on top of it.
+const GAIN: Record<SfxName, number> = {
+  tick: 0.35,
+  click: 0.35,
+  pop: 0.3,
+  error: 0.35,
+  sweep: 0.4,
+  swoosh: 0.4,
+  whoosh: 0.45,
+  riser: 0.35,
+  slam: 0.6,
+  impact: 0.6,
+  thud: 0.55,
+  align: 0.4,
+  resolve: 0.6,
+};
+
 /** One-shot sound effect placed on the scene's local timeline. */
 export const Sfx: React.FC<{at: number; name: SfxName; volume?: number; rate?: number}> = ({at, name, volume = 1, rate = 1}) =>
   !AUDIO.enabled ? null : (
     <Sequence from={Math.round(at)} durationInFrames={100} layout="none" name={`sfx:${name}`}>
-      <Html5Audio src={staticFile(`audio/sfx-${name}.wav`)} volume={volume * AUDIO.sfxVolume} playbackRate={rate} />
+      <Html5Audio src={staticFile(`audio/sfx-${name}.wav`)} volume={volume * GAIN[name] * AUDIO.sfxVolume} playbackRate={rate} />
     </Sequence>
   );

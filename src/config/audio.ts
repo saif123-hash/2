@@ -3,5 +3,5 @@
 export const AUDIO = {
   enabled: true,
   musicVolume: 0.58,
-  sfxVolume: 0.8,
+  sfxVolume: 0.75,
 };
