@@ -44,9 +44,11 @@ export const S3Camera: React.FC = () => {
     [END, {yaw: 200, roll: 28, dist: 12, pitch: 20}, EASE.in],
   ]);
 
-  const pop = (d: number) => prog(f, 6 + d, 12, EASE.overshoot);
+  const pop = (d: number) => prog(f, 1 + d, 12, EASE.overshoot);
   const whip = prog(f, WHIP, END - WHIP, EASE.in);
   const hide = 1 - prog(f, OUT, 10, EASE.in);
+  // the objects ride through the whip and only vanish on the cut
+  const objHide = 1 - prog(f, END - 5, 5, EASE.in);
   const relP = prog(f, 20, 14, EASE.inOut);
 
   // pins for the HUD labels follow the 3D elements through every move
@@ -115,7 +117,7 @@ export const S3Camera: React.FC = () => {
         ) : null}
 
         {WINDOWS.map((p, i) => {
-          const s = pop(i * 2) * hide;
+          const s = pop(i * 2) * objHide;
           return s > 0.001 ? (
             <mesh key={i} position={[p[0], p[1] * s, p[2]]} scale={s} castShadow>
               <boxGeometry args={[0.72, 0.72, 0.72]} />
@@ -124,7 +126,7 @@ export const S3Camera: React.FC = () => {
           ) : null;
         })}
         {BALCONIES.map((p, i) => {
-          const s = pop(8 + i * 2) * hide;
+          const s = pop(8 + i * 2) * objHide;
           return s > 0.001 ? (
             <mesh key={i} position={p} scale={[s, s, s]} castShadow>
               <boxGeometry args={[2.4, 0.32, 0.62]} />
@@ -132,8 +134,8 @@ export const S3Camera: React.FC = () => {
             </mesh>
           ) : null;
         })}
-        {pop(14) * hide > 0.001 ? (
-          <group position={ENTRANCE} scale={pop(14) * hide}>
+        {pop(14) * objHide > 0.001 ? (
+          <group position={ENTRANCE} scale={pop(14) * objHide}>
             <mesh rotation={[0, THREE.MathUtils.degToRad(f * 3), 0]} castShadow>
               <octahedronGeometry args={[0.6, 0]} />
               <meshStandardMaterial color={COLORS.ink} roughness={0.3} flatShading />

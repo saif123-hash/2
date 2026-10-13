@@ -64,14 +64,14 @@ export const S2Reference: React.FC = () => {
 
   const abFx = (i: number) => ({
     dy: (1 - abRise(i)) * -0.6,
-    show: abRise(i) * (1 - prog(f, CRANE + i * 1.5, 9, EASE.in)),
+    show: abRise(i) * (1 - prog(f, END - 12 + i * 1.2, 7, EASE.in)),
     look: (i >= 5 && beat(0) > 0.5 && preFix > 0.5 ? 'hatch' : 'ink') as 'hatch' | 'ink',
     sy: 1 + countPulse(i) * 0.25,
     openings: active(2) ? 0.6 + 0.4 * Math.abs(Math.sin((f - BEATS[2]) * 0.5)) : 1,
   });
   const rFx = (i: number) => ({
     dy: (1 - rRise(i)) * -0.6,
-    show: rRise(i) * (1 - prog(f, CRANE + 3 + i * 1.5, 9, EASE.in)),
+    show: rRise(i) * (1 - prog(f, END - 10 + i * 1.2, 7, EASE.in)),
     sy: 1 + countPulse(i) * 0.2,
     openings: active(2) ? 0.6 + 0.4 * Math.abs(Math.sin((f - BEATS[2]) * 0.5)) : 1,
   });
@@ -125,13 +125,13 @@ export const S2Reference: React.FC = () => {
         <Beam length={lerp(40, 4.4, prog(f, 4, 14, EASE.inOut)) * (1 - sink)} position={[0, 0, 0]} width={0.4} core={1 - sink} />
 
         <Massing3D params={APPROVED_3D} position={[0, 0, 0]} floorFx={rFx} />
-        <Check3D p={prog(f, 26, 12) * (1 - sink)} position={[1.85, height3D(APPROVED_3D) + 0.45, 1.0]} size={0.42} />
+        <Check3D p={sink > 0.85 ? 0 : prog(f, 26, 12) * (1 - sink)} position={[1.85, height3D(APPROVED_3D) + 0.45, 1.0]} size={0.42} />
 
         {[A, B].map((pos, k) => (
           <group key={k}>
             <Massing3D params={ab} position={pos} floorFx={abFx} scale={outW} />
             <EnvelopeBox w={APPROVED_3D.w + 0.1} h={height3D(APPROVED_3D) + 0.05} d={APPROVED_3D.d + 0.1} position={pos} opacity={envOp} dashed />
-            <Check3D p={prog(f, FIX.at + 10, 12) * (1 - sink)} position={[pos[0] + 1.9, height3D(ab) + 0.45, pos[2] + 1.0]} size={0.4} />
+            <Check3D p={sink > 0.85 ? 0 : prog(f, FIX.at + 10, 12) * (1 - sink)} position={[pos[0] + 1.9, height3D(ab) + 0.45, pos[2] + 1.0]} size={0.4} />
           </group>
         ))}
       </Stage>
