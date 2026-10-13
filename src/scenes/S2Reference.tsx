@@ -87,7 +87,7 @@ export const S2Reference: React.FC = () => {
         grid={lerp(0.035, 0.12, sink)}
         hud={
           <>
-            <Line3D text={COPY.s2.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="swing" outAt={CRANE + 2} outMode="flyOut" />
+            <Line3D text={COPY.s2.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="swing" outAt={CRANE + 2} outMode="flipOut" />
             <Line3D
               text={COPY.s2.line2}
               x={TEXT_RIGHT}
@@ -95,11 +95,10 @@ export const S2Reference: React.FC = () => {
               size={L2.size}
               inAt={30}
               stagger={4}
-              mode="drop"
-              ease={EASE.overshoot}
+              mode="flip"
               hl={{at: 40, dur: 12, outAt: CRANE + 4, outDur: 8}}
               outAt={CRANE + 4}
-              outMode="flyOut"
+              outMode="flipOut"
             />
             {COPY.s2.labels.map((t, i) => (
               <Line3D
@@ -137,13 +136,10 @@ export const S2Reference: React.FC = () => {
       </Stage>
 
       {collapse < 1 ? <Panel left={-40} top={lerp(-40, datumScreenY - 6, collapse)} width={1160} height={lerp(2000, 12, collapse)} core={collapse} radius={0} /> : null}
-
-      <Sfx at={40} name="sweep" volume={0.6} />
       {BEATS.map((b, i) => (
         <Sfx key={`b${i}`} at={b} name="click" rate={1 + i * 0.08} />
       ))}
       <Sfx at={FIX.at} name="align" />
-      <Sfx at={CRANE} name="whoosh" volume={0.5} />
     </AbsoluteFill>
   );
 };

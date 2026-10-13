@@ -100,13 +100,14 @@ def sfx():
     out = {}
     t = tt(0.12)
     out['tick'] = norm(fft_filter(np.sin(2 * np.pi * 1350 * t) * 0.8 + fft_filter(rng.normal(0, 1, len(t)), lo=1500) * 0.2, hi=4000) * env_ad(len(t), 0.001, 0.014), 0.45)
-    t = tt(0.1)
-    out['click'] = norm((np.sin(2 * np.pi * 1250 * t) * 0.5 + fft_filter(rng.normal(0, 1, len(t)), lo=1500, hi=7000) * 0.5) * env_ad(len(t), 0.0005, 0.012), 0.5)
+    t = tt(0.25)
+    fm = 880 * (1 + 0.25 * np.exp(-t * 60))
+    out['click'] = norm(reverb((np.sin(2 * np.pi * np.cumsum(fm) / SR) + 0.3 * np.sin(2 * np.pi * np.cumsum(fm * 2.01) / SR)) * env_ad(len(t), 0.001, 0.05), 0.6, 0.18), 0.45)
     t = tt(1.4)
     f = 38 + 110 * np.exp(-t * 9)
     boom = np.sin(2 * np.pi * np.cumsum(f) / SR) * env_ad(len(t), 0.002, 0.42)
     crack = fft_filter(rng.normal(0, 1, len(t)), lo=200, hi=3500) * env_ad(len(t), 0.0005, 0.05)
-    out['impact'] = norm(reverb(np.tanh(boom * 1.6) * 0.9 + crack * 0.45, 1.6, 0.22), 0.95)
+    out['impact'] = norm(reverb(np.tanh(boom * 1.3) + fft_filter(crack, hi=1500) * 0.12, 1.6, 0.2), 0.9)
     t = tt(0.5)
     f = 46 + 60 * np.exp(-t * 14)
     out['thud'] = norm(np.tanh(1.4 * np.sin(2 * np.pi * np.cumsum(f) / SR)) * env_ad(len(t), 0.002, 0.13), 0.8)
@@ -151,7 +152,7 @@ def sfx():
     f = 52 + 140 * np.exp(-t * 26)
     body = np.tanh(2.2 * np.sin(2 * np.pi * np.cumsum(f) / SR)) * env_ad(len(t), 0.001, 0.14)
     snap = fft_filter(rng.normal(0, 1, len(t)), lo=1200, hi=9000) * env_ad(len(t), 0.0005, 0.035)
-    out['slam'] = norm(reverb(body + snap * 0.6, 0.9, 0.18), 0.9)
+    out['slam'] = norm(reverb(fft_filter(body, hi=2500) + fft_filter(snap, hi=2500) * 0.08, 1.0, 0.2), 0.85)
     for k, v in out.items():
         write(f'sfx-{k}.wav', v)
     return out
@@ -228,10 +229,10 @@ def music():
         if main and b16 in (4, 12):
             add(drums, clap * 0.38, at)
         if main or (pre and b16 % 2 == 0):
-            v = (0.16 if b16 % 4 == 2 else 0.07) * (0.6 if pre else 1)
+            v = (0.11 if b16 % 4 == 2 else 0.045) * (0.6 if pre else 1)
             add(drums, hat * v, at + (0.01 if b16 % 2 else 0))
         if main and b16 % 4 == 2:
-            add(drums, ohat * 0.12, at)
+            add(drums, ohat * 0.07, at)
         # bass: driving eighths with an octave bounce
         if s16 % 2 == 0 and not tail and not brk:
             ch = chords[int(at // (2 * bar)) % 4]
@@ -277,12 +278,8 @@ def music():
     riser = sweep_filter(riser_n, 400, 6000, 2.0) * (rt / rt[-1]) ** 2.5
     riser = norm(fft_filter(riser, hi=5000), 0.11)
     for c in cuts:
-        add(fx, riser, c - beat * 2)
-        add(fx, fft_filter(crash, hi=9000) * 0.07, c)
-        add(fx, sub * 0.5, c)
-    add(fx, crash * 0.1, t_drop)
+        add(fx, sub * 0.45, c)
     add(fx, sub * 0.7, t_drop)
-    add(fx, crash * 0.08, t_slam6)
     add(fx, sub * 0.6, t_slam6)
 
     # final resolve: sustained Fmaj9 under the logo

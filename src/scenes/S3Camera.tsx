@@ -84,7 +84,7 @@ export const S3Camera: React.FC = () => {
         grid={lerp(0.12, 0.04, prog(f, 8, 24))}
         hud={
           <>
-            <Line3D text={COPY.s3.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={4} stagger={4} mode="spin" outAt={OUT} outMode="flyOut" />
+            <Line3D text={COPY.s3.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={4} stagger={4} mode="spin" outAt={OUT} outMode="flipOut" />
             <Line3D
               text={COPY.s3.line2}
               x={TEXT_RIGHT}
@@ -96,7 +96,7 @@ export const S3Camera: React.FC = () => {
               mode="slam"
               hl={{at: LINE2_AT + 10, dur: 10, outAt: OUT + 2, outDur: 8}}
               outAt={OUT + 2}
-              outMode="flyOut"
+              outMode="flipOut"
             />
             {(
               [
@@ -151,11 +151,7 @@ export const S3Camera: React.FC = () => {
       </Stage>
 
       <Streaks p={whip} angle={-8 + whip * 20} count={26} opacity={clamp01(whip * 3)} />
-
-      <Sfx at={10} name="swoosh" volume={0.5} />
-      <Sfx at={48} name="swoosh" volume={0.45} rate={1.1} />
       <Sfx at={LINE2_AT + 10} name="slam" volume={0.6} />
-      <Sfx at={WHIP} name="whoosh" volume={0.7} />
     </AbsoluteFill>
   );
 };

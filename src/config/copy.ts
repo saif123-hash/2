@@ -25,6 +25,8 @@ export const COPY = {
     line1: 'الإبهار يبرز التفاصيل…',
     line2: 'مش يخترع مميزات.',
     labels: ['الخامات', 'التشطيبات', 'عناصر الموقع'],
+    // from the original post: what enhancement must never add
+    inventions: ['بلكونة أكبر', 'إطلالة مختلفة'],
   },
   s5: {
     line1: 'راجع الفيديو كامل…',

@@ -33,3 +33,16 @@ export const HudBrackets: React.FC<{x: number; y: number; w: number; h: number; 
 };
 
 export const SCREEN = {w: VIDEO.width, h: VIDEO.height};
+
+/** Ink cross (✗) drawn in HUD space, centred on (x, y). */
+export const HudCross: React.FC<{x: number; y: number; size?: number; t?: number; p?: number}> = ({x, y, size = 40, t = 7, p = 1}) =>
+  p <= 0 ? null : (
+    <group position={[x, -y, 2]} scale={p}>
+      {[45, -45].map((a) => (
+        <mesh key={a} rotation={[0, 0, (a * Math.PI) / 180]} renderOrder={1003}>
+          <planeGeometry args={[t, size * 1.3]} />
+          <meshBasicMaterial color={COLORS.ink} fog={false} toneMapped={false} />
+        </mesh>
+      ))}
+    </group>
+  );

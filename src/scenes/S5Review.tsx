@@ -77,7 +77,7 @@ export const S5Review: React.FC = () => {
         lightCenter={[X(3), 0.5, Z]}
         hud={
           <>
-            <Line3D text={COPY.s5.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="flip" outAt={OUT} outMode="flyOut" />
+            <Line3D text={COPY.s5.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="flip" outAt={OUT} outMode="flipOut" />
             <Line3D
               text={COPY.s5.line2}
               x={TEXT_RIGHT}
@@ -89,7 +89,7 @@ export const S5Review: React.FC = () => {
               mode="slam"
               hl={{at: GATE.err + 10, dur: 10, outAt: OUT + 2, outDur: 8}}
               outAt={OUT + 2}
-              outMode="flyOut"
+              outMode="flipOut"
             />
             {COPY.s5.support.map((t, i) => (
               <Line3D key={i} text={t} x={TEXT_RIGHT} y={SUP.y + i * 62} size={SUP.size} weight={500} depth={6} inAt={38 + i * 6} stagger={2} mode="rise" outAt={OUT - 4} outMode="flipOut" />
@@ -177,12 +177,8 @@ export const S5Review: React.FC = () => {
       {fly > 0.35 && fly <= 0.6 ? (
         <div style={{position: 'absolute', inset: 0, background: COLORS.highlight, opacity: (fly - 0.35) / 0.25}} />
       ) : null}
-
-      <Sfx at={12} name="whoosh" volume={0.45} />
-      <Sfx at={GATE.start} name="sweep" volume={0.5} />
       <Sfx at={GATE.err + 2} name="error" volume={0.8} />
       <Sfx at={GATE.err + 16} name="align" />
-      <Sfx at={FLY} name="riser" volume={0.6} />
     </AbsoluteFill>
   );
 };

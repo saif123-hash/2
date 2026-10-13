@@ -68,7 +68,7 @@ export const S1Hook: React.FC = () => {
     const sq = t >= 0 ? Math.sin(t * 1.1) * 0.22 * Math.exp(-t * 0.35) : 0;
     const out = prog(f, OUT + (4 - i) * 2, 12, EASE.in);
     return {
-      dy: (1 - fall) * 7 - out * 6,
+      dy: (1 - fall) * 7,
       sy: 1 - sq - squashAll,
       sx: 1 + sq * 0.4,
       sz: 1 + sq * 0.4,
@@ -92,7 +92,7 @@ export const S1Hook: React.FC = () => {
         lightCenter={[0, 1, 0]}
         hud={
           <>
-            <Line3D text={COPY.s1.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={22} stagger={4} mode="flip" outAt={OUT} outMode="flyOut" />
+            <Line3D text={COPY.s1.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={22} stagger={4} mode="flip" outAt={OUT} outMode="flipOut" />
             <Line3D
               text={COPY.s1.line2}
               x={TEXT_RIGHT}
@@ -103,7 +103,7 @@ export const S1Hook: React.FC = () => {
               stagger={3}
               mode="slam"
               outAt={OUT + 4}
-              outMode="flyOut"
+              outMode="flipOut"
               outStagger={1}
               hl={{at: 88, dur: 12}}
             />
@@ -127,7 +127,7 @@ export const S1Hook: React.FC = () => {
 
         {/* the uninvited sixth slab */}
         {sixFall > 0 && sixOut < 1 ? (
-          <group position={[STACK_POS[0], sixY - sixOut * 6, STACK_POS[2]]} scale={[1, 1 - squashAll * 1.4, 1]}>
+          <group position={[STACK_POS[0], sixY, STACK_POS[2]]} scale={[1 - sixOut, (1 - squashAll * 1.4) * (1 - sixOut), 1 - sixOut]}>
             <Floor3D p={STACK} index={5} look="hatch" />
           </group>
         ) : null}
@@ -147,10 +147,7 @@ export const S1Hook: React.FC = () => {
       {LAND.map((l, i) => (
         <Sfx key={i} at={l} name="thud" rate={1 + i * 0.06} volume={0.8} />
       ))}
-      <Sfx at={SIX.from} name="riser" volume={0.6} />
       <Sfx at={SIX.land} name="impact" volume={0.6} />
-      <Sfx at={FLIP.at} name="swoosh" volume={0.6} />
-      <Sfx at={88} name="sweep" volume={0.7} />
       <Sfx at={WIPE} name="slam" volume={0.6} />
     </AbsoluteFill>
   );
