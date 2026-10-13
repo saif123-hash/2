@@ -5,7 +5,8 @@ import {COPY} from '../config/copy';
 import {COLORS, TEXT_RIGHT} from '../config/theme';
 import {EASE, Key, clamp01, lerp, prog, track} from '../lib/motion';
 import {Panel, Sfx} from '../overlay/Overlays';
-import {Beam, Check3D, EnvelopeBox} from '../three/Helpers';
+import {Beam, Check3D} from '../three/Helpers';
+import {BuildingWire} from '../three/Wire';
 import {APPROVED_3D, Massing3D, height3D} from '../three/Massing3D';
 import {Stage} from '../three/Stage';
 import {Line3D} from '../three/Text3D';
@@ -77,7 +78,7 @@ export const S5Review: React.FC = () => {
         lightCenter={[X(3), 0.5, Z]}
         hud={
           <>
-            <Line3D text={COPY.s5.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="flip" outAt={OUT} outMode="flipOut" />
+            <Line3D text={COPY.s5.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="flip" outAt={OUT} outMode="flyOut" />
             <Line3D
               text={COPY.s5.line2}
               x={TEXT_RIGHT}
@@ -89,7 +90,7 @@ export const S5Review: React.FC = () => {
               mode="slam"
               hl={{at: GATE.err + 10, dur: 10, outAt: OUT + 2, outDur: 8}}
               outAt={OUT + 2}
-              outMode="flipOut"
+              outMode="flyOut"
             />
             {COPY.s5.support.map((t, i) => (
               <Line3D key={i} text={t} x={TEXT_RIGHT} y={SUP.y + i * 62} size={SUP.size} weight={500} depth={6} inAt={38 + i * 6} stagger={2} mode="rise" outAt={OUT - 4} outMode="flipOut" />
@@ -142,7 +143,7 @@ export const S5Review: React.FC = () => {
         {/* error reveal on the faulty in-between state */}
         {errReveal > 0 && fix < 1 ? (
           <group>
-            <EnvelopeBox w={APPROVED_3D.w * SCALE + 0.3} h={height3D(APPROVED_3D) * SCALE + 0.2} d={APPROVED_3D.d * SCALE + 0.3} position={[X(ERR), 0, Z]} opacity={errReveal * (1 - fix)} dashed />
+            <BuildingWire params={APPROVED_3D} position={[X(ERR), 0.04, Z]} rotationY={-40 + ERR * 13} scale={SCALE} draw={errReveal} opacity={1 - fix} width={2.6} />
             <mesh position={[X(ERR), 0.05, Z]} rotation={[-Math.PI / 2, 0, 0]} scale={1 + Math.sin(errReveal * Math.PI) * 0.5}>
               <torusGeometry args={[1.0, 0.04, 8, 48]} />
               <meshBasicMaterial color={COLORS.ink} transparent opacity={(1 - errReveal) * 0.9 + 0.1} />
@@ -177,8 +178,12 @@ export const S5Review: React.FC = () => {
       {fly > 0.35 && fly <= 0.6 ? (
         <div style={{position: 'absolute', inset: 0, background: COLORS.highlight, opacity: (fly - 0.35) / 0.25}} />
       ) : null}
+
+      <Sfx at={12} name="whoosh" volume={0.45} />
+      <Sfx at={GATE.start} name="sweep" volume={0.5} />
       <Sfx at={GATE.err + 2} name="error" volume={0.8} />
       <Sfx at={GATE.err + 16} name="align" />
+      <Sfx at={FLY} name="riser" volume={0.6} />
     </AbsoluteFill>
   );
 };

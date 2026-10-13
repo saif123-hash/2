@@ -70,7 +70,7 @@ export const S6Brand: React.FC = () => {
         lightCenter={[0, 1, 0]}
         hud={
           <>
-            <Line3D text={COPY.s6.line1} x={540} y={L1.y} align="center" size={L1.size} inAt={10} inDur={18} stagger={6} mode="spin" outAt={EXIT} outMode="flipOut" />
+            <Line3D text={COPY.s6.line1} x={540} y={L1.y} align="center" size={L1.size} inAt={10} inDur={18} stagger={6} mode="spin" outAt={EXIT} outMode="flyOut" />
             <Line3D
               text={COPY.s6.line2}
               x={540}
@@ -83,7 +83,7 @@ export const S6Brand: React.FC = () => {
               mode="slam"
               hl={{at: L2_AT + 8, dur: 12, outAt: EXIT + 2, outDur: 10}}
               outAt={EXIT + 2}
-              outMode="flipOut"
+              outMode="flyOut"
             />
             {COPY.s6.support.map((t, i) => (
               <Line3D key={i} text={t} x={540} y={SUP.y + i * 64} align="center" size={SUP.size} weight={500} depth={6} inAt={60 + i * 6} stagger={2} mode="rise" outAt={EXIT - 4} outMode="flipOut" />
@@ -171,6 +171,8 @@ export const S6Brand: React.FC = () => {
       ) : null}
 
       <Sfx at={L2_AT + 6} name="slam" volume={0.65} />
+      <Sfx at={L2_AT + 8} name="sweep" volume={0.6} />
+      <Sfx at={EXIT} name="whoosh" volume={0.45} />
       <Sfx at={LOGO_AT} name="resolve" />
     </AbsoluteFill>
   );

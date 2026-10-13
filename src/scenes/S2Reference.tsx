@@ -4,7 +4,9 @@ import {COPY} from '../config/copy';
 import {TEXT_RIGHT} from '../config/theme';
 import {EASE, lerp, prog, tween} from '../lib/motion';
 import {Panel, Sfx} from '../overlay/Overlays';
-import {Beam, Check3D, EnvelopeBox} from '../three/Helpers';
+import {Beam, Check3D, toScreen} from '../three/Helpers';
+import {Chip} from '../three/Hud';
+import {BuildingWire} from '../three/Wire';
 import {APPROVED_3D, Massing3D, WRONG_3D, height3D, mix3D} from '../three/Massing3D';
 import {Stage} from '../three/Stage';
 import {Line3D} from '../three/Text3D';
@@ -76,7 +78,12 @@ export const S2Reference: React.FC = () => {
     openings: active(2) ? 0.6 + 0.4 * Math.abs(Math.sin((f - BEATS[2]) * 0.5)) : 1,
   });
 
-  const envOp = beat(1) * (1 - prog(f, FIX.at + FIX.dur, 8)) * (1 - sink);
+  // the approved blueprint: drawn on the reference, then laid over each AI output
+  const rWire = prog(f, 6, 22, EASE.inOut) * (1 - prog(f, 40, 10));
+  const abWire = prog(f, BEATS[0] - 8, 14, EASE.inOut) * (1 - prog(f, FIX.at + FIX.dur + 6, 10)) * (1 - sink);
+  const topR = toScreen(shot, [0, height3D(APPROVED_3D) + 0.1, 0]);
+  const topA = toScreen(shot, [A[0], height3D(ab) + 0.1, A[2]]);
+  const topB = toScreen(shot, [B[0], height3D(ab) + 0.1, B[2]]);
   const outW = 1;
 
   return (
@@ -87,7 +94,7 @@ export const S2Reference: React.FC = () => {
         grid={lerp(0.035, 0.12, sink)}
         hud={
           <>
-            <Line3D text={COPY.s2.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="swing" outAt={CRANE + 2} outMode="flipOut" />
+            <Line3D text={COPY.s2.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={8} stagger={4} mode="swing" outAt={CRANE + 2} outMode="flyOut" />
             <Line3D
               text={COPY.s2.line2}
               x={TEXT_RIGHT}
@@ -95,11 +102,15 @@ export const S2Reference: React.FC = () => {
               size={L2.size}
               inAt={30}
               stagger={4}
-              mode="flip"
+              mode="drop"
+              ease={EASE.overshoot}
               hl={{at: 40, dur: 12, outAt: CRANE + 4, outDur: 8}}
               outAt={CRANE + 4}
-              outMode="flipOut"
+              outMode="flyOut"
             />
+            <Chip text="التصميم المعتمد" x={topR[0]} y={topR[1]} at={24} until={BEATS[0] - 6} />
+            <Chip text="AI" x={topA[0]} y={topA[1]} at={34} until={FIX.at + 8} size={44} leader={40} />
+            <Chip text="AI" x={topB[0]} y={topB[1]} at={36} until={FIX.at + 8} size={44} leader={40} />
             {COPY.s2.labels.map((t, i) => (
               <Line3D
                 key={i}
@@ -124,22 +135,26 @@ export const S2Reference: React.FC = () => {
         <Beam length={lerp(40, 4.4, prog(f, 4, 14, EASE.inOut)) * (1 - sink)} position={[0, 0, 0]} width={0.4} core={1 - sink} />
 
         <Massing3D params={APPROVED_3D} position={[0, 0, 0]} floorFx={rFx} />
+        <BuildingWire params={APPROVED_3D} draw={rWire} xray={false} width={3} />
         <Check3D p={sink > 0.85 ? 0 : prog(f, 26, 12) * (1 - sink)} position={[1.85, height3D(APPROVED_3D) + 0.45, 1.0]} size={0.42} />
 
         {[A, B].map((pos, k) => (
           <group key={k}>
             <Massing3D params={ab} position={pos} floorFx={abFx} scale={outW} />
-            <EnvelopeBox w={APPROVED_3D.w + 0.1} h={height3D(APPROVED_3D) + 0.05} d={APPROVED_3D.d + 0.1} position={pos} opacity={envOp} dashed />
+            <BuildingWire params={APPROVED_3D} position={pos} draw={abWire} />
             <Check3D p={sink > 0.85 ? 0 : prog(f, FIX.at + 10, 12) * (1 - sink)} position={[pos[0] + 1.9, height3D(ab) + 0.45, pos[2] + 1.0]} size={0.4} />
           </group>
         ))}
       </Stage>
 
       {collapse < 1 ? <Panel left={-40} top={lerp(-40, datumScreenY - 6, collapse)} width={1160} height={lerp(2000, 12, collapse)} core={collapse} radius={0} /> : null}
+
+      <Sfx at={40} name="sweep" volume={0.6} />
       {BEATS.map((b, i) => (
         <Sfx key={`b${i}`} at={b} name="click" rate={1 + i * 0.08} />
       ))}
       <Sfx at={FIX.at} name="align" />
+      <Sfx at={CRANE} name="whoosh" volume={0.5} />
     </AbsoluteFill>
   );
 };

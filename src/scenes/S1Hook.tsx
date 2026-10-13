@@ -11,6 +11,10 @@ import {Floor3D, Massing3D, Params3D, floorY} from '../three/Massing3D';
 import {Stage} from '../three/Stage';
 import {Line3D, lineLayout} from '../three/Text3D';
 import {Shot, shotTrack} from '../three/shot';
+import {BuildingWire} from '../three/Wire';
+import {Chip} from '../three/Hud';
+import {toScreen} from '../three/Helpers';
+import {storey} from '../three/Massing3D';
 
 // ── Scene 01 · The hook ────────────────────────────────────────────────
 // Macro on an extruded 5 → five slabs crash down on the beat → a sixth,
@@ -37,7 +41,7 @@ export const S1Hook: React.FC = () => {
 
   const shot = shotTrack(f, BASE, [
     [0, {}],
-    [36, {tx: -0.1, ty: 0.15, tz: 0, dist: 22, yaw: 44, pitch: 9, roll: 0, fov: 30}, EASE.inOut],
+    [36, {tx: 0.2, ty: 0.15, tz: 0, dist: 22, yaw: 44, pitch: 9, roll: 0, fov: 30}, EASE.inOut],
     [64, {yaw: 52, dist: 21.5}, EASE.smooth],
     [72, {dist: 21}, EASE.in],
     [100, {tx: -0.55, ty: 0.35, tz: 0.3, dist: 21.5, yaw: 34, pitch: 5, roll: 2.5, fov: 31}, EASE.out],
@@ -68,7 +72,7 @@ export const S1Hook: React.FC = () => {
     const sq = t >= 0 ? Math.sin(t * 1.1) * 0.22 * Math.exp(-t * 0.35) : 0;
     const out = prog(f, OUT + (4 - i) * 2, 12, EASE.in);
     return {
-      dy: (1 - fall) * 7,
+      dy: (1 - fall) * 7 - out * 6,
       sy: 1 - sq - squashAll,
       sx: 1 + sq * 0.4,
       sz: 1 + sq * 0.4,
@@ -85,6 +89,13 @@ export const S1Hook: React.FC = () => {
   const r0 = {left: TEXT_RIGHT - l2.width - padX, top: L2.y + l2.size * 0.04 - (l2.size * 1.18) / 2, width: l2.width + padX * 2, height: l2.size * 1.18};
   const w = prog(f, WIPE, END - WIPE, EASE.in);
 
+  // the approved design, as a blueprint, is drawn first; floors land inside it
+  const wireDraw = prog(f, 6, 30, EASE.inOut);
+  const wireOut = prog(f, OUT, 10, EASE.in);
+  const topY = 5 * storey(STACK);
+  const pApproved = toScreen(shot, [STACK_POS[0] - 0.4, topY + 0.15, STACK_POS[2] + STACK.d / 2]);
+  const pAI = toScreen(shot, [STACK_POS[0] + 0.6, topY + storey(STACK) + 0.1, STACK_POS[2] + STACK.d / 2]);
+
   return (
     <AbsoluteFill>
       <Stage
@@ -92,7 +103,7 @@ export const S1Hook: React.FC = () => {
         lightCenter={[0, 1, 0]}
         hud={
           <>
-            <Line3D text={COPY.s1.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={22} stagger={4} mode="flip" outAt={OUT} outMode="flipOut" />
+            <Line3D text={COPY.s1.line1} x={TEXT_RIGHT} y={L1.y} size={L1.size} inAt={22} stagger={4} mode="flip" outAt={OUT} outMode="flyOut" />
             <Line3D
               text={COPY.s1.line2}
               x={TEXT_RIGHT}
@@ -103,10 +114,12 @@ export const S1Hook: React.FC = () => {
               stagger={3}
               mode="slam"
               outAt={OUT + 4}
-              outMode="flipOut"
+              outMode="flyOut"
               outStagger={1}
               hl={{at: 88, dur: 12}}
             />
+            <Chip text="التصميم المعتمد" x={pApproved[0]} y={pApproved[1]} at={30} until={SIX.from - 2} />
+            <Chip text="AI" x={pAI[0]} y={pAI[1]} at={SIX.land + 3} until={OUT} size={46} />
             {COPY.s1.support.map((t, i) => (
               <Line3D key={i} text={t} x={TEXT_RIGHT} y={SUP.y + i * 58} size={SUP.size} weight={500} depth={6} inAt={SUP.at + i * 5} stagger={2} mode="rise" outAt={OUT - 6} outMode="flipOut" />
             ))}
@@ -124,10 +137,11 @@ export const S1Hook: React.FC = () => {
         </group>
 
         <Massing3D params={STACK} position={STACK_POS} floorFx={floorFx} roof={false} />
+        <BuildingWire params={STACK} position={STACK_POS} draw={wireDraw} opacity={1 - wireOut} windows={false} width={3} />
 
         {/* the uninvited sixth slab */}
         {sixFall > 0 && sixOut < 1 ? (
-          <group position={[STACK_POS[0], sixY, STACK_POS[2]]} scale={[1 - sixOut, (1 - squashAll * 1.4) * (1 - sixOut), 1 - sixOut]}>
+          <group position={[STACK_POS[0], sixY - sixOut * 6, STACK_POS[2]]} scale={[1, 1 - squashAll * 1.4, 1]}>
             <Floor3D p={STACK} index={5} look="hatch" />
           </group>
         ) : null}
@@ -147,7 +161,10 @@ export const S1Hook: React.FC = () => {
       {LAND.map((l, i) => (
         <Sfx key={i} at={l} name="thud" rate={1 + i * 0.06} volume={0.8} />
       ))}
+      <Sfx at={SIX.from} name="riser" volume={0.6} />
       <Sfx at={SIX.land} name="impact" volume={0.6} />
+      <Sfx at={FLIP.at} name="swoosh" volume={0.6} />
+      <Sfx at={88} name="sweep" volume={0.7} />
       <Sfx at={WIPE} name="slam" volume={0.6} />
     </AbsoluteFill>
   );
